@@ -13,31 +13,6 @@
   <property name="windowTitle">
    <string>Hailo-H8 Control Panel</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">
-    QMainWindow {
-      background-color: #1e1e1e;
-    }
-    QTabWidget::pane {
-      border: 1px solid #3c3c3c;
-      background-color: #252526;
-    }
-    QTabBar::tab {
-      background-color: #2d2d2d;
-      color: #cccccc;
-      padding: 10px 20px;
-      margin-right: 2px;
-    }
-    QTabBar::tab:selected {
-      background-color: #1e1e1e;
-      color: #ffffff;
-      border-bottom: 2px solid #007acc;
-    }
-    QTabBar::tab:hover {
-      background-color: #3c3c3c;
-    }
-   </string>
-  </property>
   <widget class="QWidget" name="centralwidget">
    <layout class="QVBoxLayout" name="verticalLayout">
     <property name="spacing">
@@ -93,24 +68,6 @@
      <height>25</height>
     </rect>
    </property>
-   <property name="styleSheet">
-    <string notr="true">
-     QMenuBar {
-       background-color: #2d2d2d;
-       color: #cccccc;
-     }
-     QMenuBar::item:selected {
-       background-color: #3c3c3c;
-     }
-     QMenu {
-       background-color: #2d2d2d;
-       color: #cccccc;
-     }
-     QMenu::item:selected {
-       background-color: #007acc;
-     }
-    </string>
-   </property>
    <widget class="QMenu" name="menuFile">
     <property name="title">
      <string>File</string>
@@ -153,16 +110,7 @@
    <addaction name="menuTools"/>
    <addaction name="menuHelp"/>
   </widget>
-  <widget class="QStatusBar" name="statusbar">
-   <property name="styleSheet">
-    <string notr="true">
-     QStatusBar {
-       background-color: #007acc;
-       color: white;
-     }
-    </string>
-   </property>
-  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
   <action name="actionOpen">
    <property name="text">
     <string>Open</string>

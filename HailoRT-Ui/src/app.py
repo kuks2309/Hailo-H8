@@ -12,6 +12,11 @@ from views.device_tab import DeviceTabController
 from views.convert_tab import ConvertTabController
 from views.inference_tab import InferenceTabController
 from views.monitor_tab import MonitorTabController
+from utils.styles import get_theme
+from utils.environment import check_environment, get_missing_packages_message
+from utils.logger import setup_logger
+
+logger = setup_logger(__name__)
 
 
 class HailoApp(QMainWindow):
@@ -36,6 +41,12 @@ class HailoApp(QMainWindow):
         # Set initial status
         self.statusbar.showMessage("Ready")
 
+        # Apply theme
+        self.setStyleSheet(get_theme())
+
+        # Check environment at startup
+        self._check_environment()
+
     def _init_tabs(self):
         """Initialize tab controllers."""
         # Device tab
@@ -53,9 +64,10 @@ class HailoApp(QMainWindow):
             self.tab_inference, self.base_path
         )
 
-        # Monitor tab
+        # Monitor tab (shares device_controller for real device stats)
         self.monitor_controller = MonitorTabController(
-            self.tab_monitor, self.base_path
+            self.tab_monitor, self.base_path,
+            device_controller=self.device_controller
         )
 
     def _connect_actions(self):
@@ -77,6 +89,31 @@ class HailoApp(QMainWindow):
 
         # Help menu
         self.actionAbout.triggered.connect(self._show_about)
+
+    def _check_environment(self):
+        """Check environment and warn about missing packages."""
+        env_result = check_environment()
+
+        missing_required = env_result['missing_required']
+        missing_optional = env_result['missing_optional']
+
+        if missing_required:
+            message = get_missing_packages_message(env_result)
+            logger.warning(f"Missing required packages: {missing_required}")
+            QMessageBox.warning(
+                self,
+                "Missing Required Packages",
+                f"Some required packages are not installed:\n\n{message}\n\n"
+                "Some features may not work correctly."
+            )
+        elif missing_optional:
+            logger.info(f"Missing optional packages: {missing_optional}")
+            self.statusbar.showMessage(
+                f"Ready (some optional packages missing: {', '.join(missing_optional)})",
+                5000
+            )
+        else:
+            logger.info("All packages available")
 
     def _show_settings(self):
         """Show settings dialog."""
@@ -104,6 +141,25 @@ class HailoApp(QMainWindow):
 
     def closeEvent(self, event):
         """Handle window close event."""
+        # Stop conversion worker if running
+        if hasattr(self, 'convert_controller') and self.convert_controller.worker:
+            worker = self.convert_controller.worker
+            if worker.isRunning():
+                reply = QMessageBox.question(
+                    self, "Confirm Exit",
+                    "A conversion is in progress. Exit anyway?",
+                    QMessageBox.Yes | QMessageBox.No, QMessageBox.No
+                )
+                if reply == QMessageBox.No:
+                    event.ignore()
+                    return
+                worker.cancel()
+                worker.wait(10000)
+                if worker.isRunning():
+                    logger.warning("ConvertWorker did not stop gracefully, forcing terminate")
+                    worker.terminate()
+                    worker.wait(3000)
+
         # Stop any running inference
         if hasattr(self, 'inference_controller'):
             self.inference_controller.stop_inference()

@@ -10,121 +10,6 @@
     <height>700</height>
    </rect>
   </property>
-  <property name="styleSheet">
-   <string notr="true">
-    QWidget {
-      background-color: #1e1e1e;
-      color: #cccccc;
-    }
-    QGroupBox {
-      font-weight: bold;
-      border: 1px solid #3c3c3c;
-      border-radius: 5px;
-      margin-top: 10px;
-      padding-top: 10px;
-      background-color: #252526;
-    }
-    QGroupBox::title {
-      subcontrol-origin: margin;
-      left: 10px;
-      padding: 0 5px;
-      color: #007acc;
-    }
-    QLineEdit {
-      background-color: #3c3c3c;
-      color: #ffffff;
-      border: 1px solid #555555;
-      border-radius: 4px;
-      padding: 8px;
-      font-size: 13px;
-    }
-    QLineEdit:focus {
-      border: 1px solid #007acc;
-    }
-    QSpinBox, QComboBox {
-      background-color: #3c3c3c;
-      color: #ffffff;
-      border: 1px solid #555555;
-      border-radius: 4px;
-      padding: 6px;
-      min-width: 80px;
-    }
-    QComboBox::drop-down {
-      border: none;
-      padding-right: 10px;
-    }
-    QComboBox::down-arrow {
-      image: none;
-      border-left: 5px solid transparent;
-      border-right: 5px solid transparent;
-      border-top: 5px solid #cccccc;
-    }
-    QPushButton {
-      background-color: #0e639c;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      border-radius: 4px;
-      font-weight: bold;
-      font-size: 13px;
-    }
-    QPushButton:hover {
-      background-color: #1177bb;
-    }
-    QPushButton:pressed {
-      background-color: #0d5a8c;
-    }
-    QPushButton:disabled {
-      background-color: #3c3c3c;
-      color: #666666;
-    }
-    QPushButton#btnBrowsePt, QPushButton#btnBrowseOnnxOut,
-    QPushButton#btnBrowseOnnx, QPushButton#btnBrowseCalib, QPushButton#btnBrowseHefOut {
-      background-color: #4a4a4a;
-      padding: 8px 12px;
-      min-width: 30px;
-    }
-    QPushButton#btnBrowsePt:hover, QPushButton#btnBrowseOnnxOut:hover,
-    QPushButton#btnBrowseOnnx:hover, QPushButton#btnBrowseCalib:hover, QPushButton#btnBrowseHefOut:hover {
-      background-color: #5a5a5a;
-    }
-    QPushButton#btnConvertOnnx {
-      background-color: #4caf50;
-      font-size: 14px;
-      padding: 12px 30px;
-    }
-    QPushButton#btnConvertOnnx:hover {
-      background-color: #66bb6a;
-    }
-    QPushButton#btnCompileHef {
-      background-color: #ff9800;
-      font-size: 14px;
-      padding: 12px 30px;
-    }
-    QPushButton#btnCompileHef:hover {
-      background-color: #ffa726;
-    }
-    QTextEdit {
-      background-color: #1e1e1e;
-      color: #4ec9b0;
-      border: 1px solid #3c3c3c;
-      font-family: 'Consolas', 'Monaco', monospace;
-      font-size: 12px;
-    }
-    QProgressBar {
-      border: 1px solid #3c3c3c;
-      border-radius: 4px;
-      text-align: center;
-      background-color: #2d2d2d;
-      color: white;
-      font-weight: bold;
-    }
-    QProgressBar::chunk {
-      background-color: #007acc;
-      border-radius: 3px;
-    }
-   </string>
-  </property>
   <layout class="QVBoxLayout" name="verticalLayout">
    <property name="spacing">
     <number>15</number>
@@ -147,7 +32,7 @@
       <string>Model Conversion Pipeline</string>
      </property>
      <property name="styleSheet">
-      <string notr="true">font-size: 18px; font-weight: bold; color: #ffffff; padding: 5px;</string>
+      <string notr="true">font-size: 18px; font-weight: bold; color: #000000; padding: 5px;</string>
      </property>
     </widget>
    </item>
@@ -155,15 +40,6 @@
     <widget class="QFrame" name="framePipeline">
      <property name="minimumHeight">
       <number>60</number>
-     </property>
-     <property name="styleSheet">
-      <string notr="true">
-       QFrame {
-         background-color: #252526;
-         border: 1px solid #3c3c3c;
-         border-radius: 5px;
-       }
-      </string>
      </property>
      <layout class="QHBoxLayout" name="pipelineLayout">
       <item>
@@ -189,7 +65,7 @@
          <string>  ➜  </string>
         </property>
         <property name="styleSheet">
-         <string notr="true">font-size: 20px; color: #888888;</string>
+         <string notr="true">font-size: 20px; color: #666666;</string>
         </property>
        </widget>
       </item>
@@ -209,7 +85,7 @@
          <string>  ➜  </string>
         </property>
         <property name="styleSheet">
-         <string notr="true">font-size: 20px; color: #888888;</string>
+         <string notr="true">font-size: 20px; color: #666666;</string>
         </property>
        </widget>
       </item>
@@ -276,9 +152,129 @@
               <property name="text">
                <string>...</string>
               </property>
+              <property name="browse" stdset="0">
+               <string>true</string>
+              </property>
              </widget>
             </item>
            </layout>
+          </item>
+          <item>
+           <widget class="QFrame" name="frameModelDetection">
+            <property name="frameShape">
+             <enum>QFrame::StyledPanel</enum>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">QFrame#frameModelDetection { background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 4px; padding: 6px; }</string>
+            </property>
+            <layout class="QHBoxLayout" name="modelDetectionLayout">
+             <property name="spacing">
+              <number>15</number>
+             </property>
+             <property name="topMargin">
+              <number>4</number>
+             </property>
+             <property name="bottomMargin">
+              <number>4</number>
+             </property>
+             <item>
+              <widget class="QLabel" name="lblDetectionIcon">
+               <property name="text">
+                <string>Model:</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-weight: bold; color: #333333;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblYoloVersion">
+               <property name="text">
+                <string>-</string>
+               </property>
+               <property name="toolTip">
+                <string>Detected YOLO version</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #1565c0; font-weight: bold;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblSepTask">
+               <property name="text">
+                <string>|</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #bdbdbd;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTaskLabel">
+               <property name="text">
+                <string>Task:</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-weight: bold; color: #333333;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblTaskType">
+               <property name="text">
+                <string>-</string>
+               </property>
+               <property name="toolTip">
+                <string>Detected task type (detect/segment/classify)</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #2e7d32; font-weight: bold;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblSepOpset">
+               <property name="text">
+                <string>|</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #bdbdbd;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblOpsetLabel">
+               <property name="text">
+                <string>Opset:</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">font-weight: bold; color: #333333;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <widget class="QLabel" name="lblRecommendedOpset">
+               <property name="text">
+                <string>-</string>
+               </property>
+               <property name="toolTip">
+                <string>Recommended ONNX opset version</string>
+               </property>
+               <property name="styleSheet">
+                <string notr="true">color: #ef6c00; font-weight: bold;</string>
+               </property>
+              </widget>
+             </item>
+             <item>
+              <spacer name="detectionSpacer">
+               <property name="orientation">
+                <enum>Qt::Horizontal</enum>
+               </property>
+              </spacer>
+             </item>
+            </layout>
+           </widget>
           </item>
           <item>
            <layout class="QHBoxLayout" name="inputSizeLayout">
@@ -428,6 +424,9 @@
               <property name="text">
                <string>...</string>
               </property>
+              <property name="browse" stdset="0">
+               <string>true</string>
+              </property>
              </widget>
             </item>
            </layout>
@@ -448,6 +447,9 @@
               </property>
               <property name="minimumHeight">
                <number>40</number>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: #2e7d32; font-size: 14px; padding: 12px 30px;</string>
               </property>
              </widget>
             </item>
@@ -496,6 +498,9 @@
               <property name="text">
                <string>...</string>
               </property>
+              <property name="browse" stdset="0">
+               <string>true</string>
+              </property>
              </widget>
             </item>
            </layout>
@@ -523,6 +528,9 @@
              <widget class="QPushButton" name="btnBrowseCalib">
               <property name="text">
                <string>...</string>
+              </property>
+              <property name="browse" stdset="0">
+               <string>true</string>
               </property>
              </widget>
             </item>
@@ -618,6 +626,9 @@
               <property name="text">
                <string>...</string>
               </property>
+              <property name="browse" stdset="0">
+               <string>true</string>
+              </property>
              </widget>
             </item>
            </layout>
@@ -638,6 +649,9 @@
               </property>
               <property name="minimumHeight">
                <number>40</number>
+              </property>
+              <property name="styleSheet">
+               <string notr="true">background-color: #ef6c00; font-size: 14px; padding: 12px 30px;</string>
               </property>
              </widget>
             </item>
@@ -670,7 +684,7 @@
            <bool>true</bool>
           </property>
           <property name="html">
-           <string>&lt;p style="color: #888888;"&gt;Ready for conversion...&lt;/p&gt;</string>
+           <string>&lt;p style="color: #666666;"&gt;Ready for conversion...&lt;/p&gt;</string>
           </property>
          </widget>
         </item>
@@ -688,9 +702,6 @@
          <widget class="QPushButton" name="btnClearLog">
           <property name="text">
            <string>Clear Log</string>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">background-color: #4a4a4a;</string>
           </property>
          </widget>
         </item>

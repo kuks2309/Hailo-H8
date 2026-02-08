@@ -82,5 +82,30 @@ class Config:
             'device': {
                 'target': 'hailo8',
                 'auto_connect': False,
-            }
+            },
+            'conversion': {
+                'default_opset': 17,
+                'available_opsets': [11, 12, 13, 17, 18],
+                'default_batch_size': 1,
+                'default_input_size': [640, 640],
+                'available_targets': ['hailo8', 'hailo8l', 'hailo15h'],
+                'default_target': 'hailo8',
+                'model_types': ['detect', 'segment', 'classify'],
+                'default_model_type': 'detect',
+                'model_names': ['yolov5n', 'yolov5s', 'yolov5m', 'yolov5l', 'yolov8n', 'yolov8s', 'yolov8m', 'yolov8l'],
+                'default_model_name': 'yolov5s',
+                'default_num_classes': 80,
+                'calibration': {
+                    'max_images': 500,
+                    'layout': 'NHWC',
+                    'data_format': 'float32',
+                },
+            },
+            'file_extensions': {
+                'pytorch': ['.pt', '.pth'],
+                'onnx': ['.onnx'],
+                'hef': ['.hef'],
+                'images': ['.jpg', '.jpeg', '.png', '.bmp'],
+                'video': ['.mp4', '.avi', '.mov', '.mkv'],
+            },
         }

@@ -22,9 +22,11 @@ logger = setup_logger(__name__)
 class MonitorTabController:
     """Controller for performance monitoring tab."""
 
-    def __init__(self, tab_widget: QWidget, base_path: str) -> None:
+    def __init__(self, tab_widget: QWidget, base_path: str,
+                 device_controller=None) -> None:
         self.tab: QWidget = tab_widget
         self.base_path: str = base_path
+        self.device_controller = device_controller
 
         # Data history for charts
         self.fps_history: deque = deque(maxlen=60)
@@ -93,19 +95,20 @@ class MonitorTabController:
         self._update_display(fps, latency, throughput)
 
     def _update_stats(self) -> None:
-        """Update statistics display."""
+        """Update statistics display using shared device controller."""
         try:
-            logger.debug("Fetching device stats from HailoService")
-            from services.hailo_service import HailoService
-            service = HailoService()
-            info = service.get_device_info()
+            # Use shared device controller if available and connected
+            if (self.device_controller
+                    and hasattr(self.device_controller, 'hailo_service')
+                    and self.device_controller.hailo_service
+                    and self.device_controller.is_connected):
+                logger.debug("Fetching device stats from shared HailoService")
+                info = self.device_controller.hailo_service.get_device_info()
+                self._update_device_stats(info)
+            else:
+                logger.debug("No connected device, using mock stats")
+                self._update_mock_stats()
 
-            self._update_device_stats(info)
-
-        except ImportError:
-            logger.debug("HailoRT not available, using mock stats")
-            # Mock data for testing
-            self._update_mock_stats()
         except Exception as e:
             logger.error(f"Error updating stats: {e}", exc_info=True)
 

@@ -13,55 +13,6 @@
   <property name="windowTitle">
    <string>Settings</string>
   </property>
-  <property name="styleSheet">
-   <string notr="true">
-    QDialog {
-      background-color: #1e1e1e;
-      color: #cccccc;
-    }
-    QGroupBox {
-      font-weight: bold;
-      border: 1px solid #3c3c3c;
-      border-radius: 5px;
-      margin-top: 10px;
-      padding-top: 10px;
-      background-color: #252526;
-    }
-    QGroupBox::title {
-      subcontrol-origin: margin;
-      left: 10px;
-      padding: 0 5px;
-      color: #007acc;
-    }
-    QLineEdit, QSpinBox, QComboBox {
-      background-color: #3c3c3c;
-      color: #ffffff;
-      border: 1px solid #555555;
-      border-radius: 4px;
-      padding: 6px;
-    }
-    QCheckBox {
-      color: #cccccc;
-    }
-    QPushButton {
-      background-color: #0e639c;
-      color: white;
-      border: none;
-      padding: 8px 20px;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-    QPushButton:hover {
-      background-color: #1177bb;
-    }
-    QPushButton#btnCancel {
-      background-color: #4a4a4a;
-    }
-    QPushButton#btnCancel:hover {
-      background-color: #5a5a5a;
-    }
-   </string>
-  </property>
   <layout class="QVBoxLayout" name="mainLayout">
    <property name="spacing">
     <number>15</number>

@@ -10,59 +10,6 @@
     <height>700</height>
    </rect>
   </property>
-  <property name="styleSheet">
-   <string notr="true">
-    QWidget {
-      background-color: #1e1e1e;
-      color: #cccccc;
-    }
-    QGroupBox {
-      font-weight: bold;
-      border: 1px solid #3c3c3c;
-      border-radius: 5px;
-      margin-top: 10px;
-      padding-top: 10px;
-      background-color: #252526;
-    }
-    QGroupBox::title {
-      subcontrol-origin: margin;
-      left: 10px;
-      padding: 0 5px;
-      color: #007acc;
-    }
-    QLabel {
-      color: #cccccc;
-    }
-    QPushButton {
-      background-color: #0e639c;
-      color: white;
-      border: none;
-      padding: 8px 16px;
-      border-radius: 4px;
-      font-weight: bold;
-    }
-    QPushButton:hover {
-      background-color: #1177bb;
-    }
-    QPushButton:pressed {
-      background-color: #0d5a8c;
-    }
-    QPushButton:disabled {
-      background-color: #3c3c3c;
-      color: #666666;
-    }
-    QProgressBar {
-      border: 1px solid #3c3c3c;
-      border-radius: 3px;
-      text-align: center;
-      background-color: #2d2d2d;
-    }
-    QProgressBar::chunk {
-      background-color: #007acc;
-      border-radius: 2px;
-    }
-   </string>
-  </property>
   <layout class="QHBoxLayout" name="horizontalLayout">
    <property name="spacing">
     <number>20</number>
@@ -105,10 +52,10 @@
           <item row="0" column="1">
            <widget class="QLabel" name="lblStatusValue">
             <property name="text">
-             <string>● Disconnected</string>
+             <string>Disconnected</string>
             </property>
             <property name="styleSheet">
-             <string notr="true">color: #f44336; font-weight: bold;</string>
+             <string notr="true">color: #c62828; font-weight: bold;</string>
             </property>
            </widget>
           </item>
@@ -222,7 +169,7 @@
            <string>-- °C</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">font-size: 36px; font-weight: bold; color: #4caf50;</string>
+           <string notr="true">font-size: 36px; font-weight: bold; color: #2e7d32;</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
@@ -250,7 +197,7 @@
              <string>0°C</string>
             </property>
             <property name="styleSheet">
-             <string notr="true">font-size: 10px; color: #888888;</string>
+             <string notr="true">font-size: 10px; color: #666666;</string>
             </property>
            </widget>
           </item>
@@ -267,7 +214,7 @@
              <string>100°C</string>
             </property>
             <property name="styleSheet">
-             <string notr="true">font-size: 10px; color: #888888;</string>
+             <string notr="true">font-size: 10px; color: #666666;</string>
             </property>
            </widget>
           </item>
@@ -288,7 +235,7 @@
            <string>-- W</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">font-size: 36px; font-weight: bold; color: #2196f3;</string>
+           <string notr="true">font-size: 36px; font-weight: bold; color: #1565c0;</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
@@ -340,7 +287,7 @@
            <string>-- %</string>
           </property>
           <property name="styleSheet">
-           <string notr="true">font-size: 48px; font-weight: bold; color: #ff9800;</string>
+           <string notr="true">font-size: 48px; font-weight: bold; color: #ef6c00;</string>
           </property>
           <property name="alignment">
            <set>Qt::AlignCenter</set>
@@ -376,17 +323,6 @@
          <widget class="QTextEdit" name="txtDeviceInfo">
           <property name="readOnly">
            <bool>true</bool>
-          </property>
-          <property name="styleSheet">
-           <string notr="true">
-            QTextEdit {
-              background-color: #1e1e1e;
-              color: #cccccc;
-              border: 1px solid #3c3c3c;
-              font-family: 'Consolas', 'Monaco', monospace;
-              font-size: 12px;
-            }
-           </string>
           </property>
           <property name="html">
            <string>&lt;p&gt;No device information available.&lt;/p&gt;&lt;p&gt;Click 'Connect' to detect Hailo device.&lt;/p&gt;</string>

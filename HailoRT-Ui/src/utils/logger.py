@@ -19,6 +19,8 @@ def setup_logger(name: str = 'HailoRT-UI', log_dir: str = None) -> logging.Logge
         Configured logger instance
     """
     logger = logging.getLogger(name)
+    if logger.handlers:
+        return logger
     logger.setLevel(logging.DEBUG)
 
     # Console handler

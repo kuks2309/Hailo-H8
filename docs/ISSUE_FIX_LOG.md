@@ -1214,3 +1214,76 @@ if yolo_version:
 1. 파일명 기반 감지는 신뢰도가 낮음 (`best.pt`, `last.pt` 등)
 2. PT 파일 내부 pickle 데이터에 모델 정보가 포함됨
 3. zipfile로 직접 읽으면 torch.load() 없이도 빠른 감지 가능
+
+---
+
+## 2026-02-08
+
+### Issue #18: 로그 파일 자동 정리 - logs/ 폴더 이동 (ENHANCEMENT - RESOLVED)
+
+**문제:** Hailo SDK/Runtime이 생성하는 `*.log` 파일이 프로젝트 전체에 흩어져 관리 어려움
+
+**산재된 로그 파일:**
+
+| 위치 | 파일 예시 |
+|------|-----------|
+| `HailoRT-Ui/` | `hailort.log`, `acceleras.log`, `hailo_sdk.client.log` |
+| `HailoRT-Ui/src/` | `hailort.log`, `acceleras.log` |
+| 프로젝트 루트 | `hailo_sdk.core.*.log`, `hailo_examples.log`, `allocator.log` |
+
+**원인:**
+- Hailo SDK/Runtime이 **현재 작업 디렉토리(CWD)**에 로그 파일을 자동 생성
+- 앱 실행 위치에 따라 여러 디렉토리에 로그가 분산됨
+
+**해결 방법:**
+- `main.py`에 `collect_logs()` 함수 추가
+- **앱 시작 시** `HailoRT-Ui/` 및 `HailoRT-Ui/src/`의 `*.log` 파일을 `HailoRT-Ui/logs/`로 자동 이동
+- 이동 실패 시 (파일 사용 중 등) 조용히 건너뜀
+
+**추가된 코드 (`HailoRT-Ui/main.py`):**
+```python
+def collect_logs():
+    """Move scattered *.log files to logs/ folder at startup."""
+    app_dir = os.path.dirname(os.path.abspath(__file__))
+    logs_dir = os.path.join(app_dir, 'logs')
+    os.makedirs(logs_dir, exist_ok=True)
+
+    scan_dirs = [app_dir, os.path.join(app_dir, 'src')]
+
+    moved = 0
+    for scan_dir in scan_dirs:
+        if not os.path.isdir(scan_dir):
+            continue
+        for log_file in glob.glob(os.path.join(scan_dir, '*.log')):
+            filename = os.path.basename(log_file)
+            dst = os.path.join(logs_dir, filename)
+            try:
+                shutil.move(log_file, dst)
+                moved += 1
+            except OSError:
+                pass
+
+    if moved:
+        print(f"[Startup] {moved} log file(s) moved to logs/")
+```
+
+**동작 흐름:**
+```
+앱 시작 (python main.py)
+  → collect_logs() 실행
+  → HailoRT-Ui/*.log + src/*.log 스캔
+  → HailoRT-Ui/logs/ 로 자동 이동
+  → "[Startup] N log file(s) moved to logs/" 출력
+  → 앱 정상 시작
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/main.py` | `import glob, shutil` 추가, `collect_logs()` 함수 추가, `main()`에서 호출 |
+
+**참고:**
+- `.gitignore`에 `*.log` 및 `logs/` 이미 등록되어 git 영향 없음
+- SDK가 실행 중 새 로그 생성 → 다음 앱 시작 시 자동 정리됨
+- `logger.py`의 `log_dir` 파라미터로 앱 자체 로그도 `logs/`에 저장 가능
+
+**심각도:** Minor

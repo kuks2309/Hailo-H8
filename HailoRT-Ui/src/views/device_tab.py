@@ -14,6 +14,7 @@ from PyQt5 import uic
 from utils.constants import REFRESH_INTERVAL_MS
 from utils.helpers import get_temperature_color, generate_mock_device_info
 from utils.logger import setup_logger
+from utils.styles import get_color
 
 logger = setup_logger(__name__)
 
@@ -170,14 +171,14 @@ class DeviceTabController:
     def _update_ui_connected(self) -> None:
         """Update UI for connected state."""
         self.tab.lblStatusValue.setText("● Connected")
-        self.tab.lblStatusValue.setStyleSheet("color: #4caf50; font-weight: bold;")
+        self.tab.lblStatusValue.setStyleSheet(f"color: {get_color('success')}; font-weight: bold;")
         self.tab.btnConnect.setEnabled(False)
         self.tab.btnDisconnect.setEnabled(True)
 
     def _update_ui_disconnected(self) -> None:
         """Update UI for disconnected state."""
         self.tab.lblStatusValue.setText("● Disconnected")
-        self.tab.lblStatusValue.setStyleSheet("color: #f44336; font-weight: bold;")
+        self.tab.lblStatusValue.setStyleSheet(f"color: {get_color('error')}; font-weight: bold;")
         self.tab.btnConnect.setEnabled(True)
         self.tab.btnDisconnect.setEnabled(False)
 

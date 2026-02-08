@@ -6,10 +6,8 @@ import random
 from utils.constants import (
     TEMP_NORMAL_THRESHOLD,
     TEMP_WARN_THRESHOLD,
-    TEMP_COLOR_NORMAL,
-    TEMP_COLOR_WARNING,
-    TEMP_COLOR_CRITICAL,
 )
+from utils.styles import get_color
 
 
 def get_temperature_color(temp: float) -> tuple:
@@ -22,11 +20,11 @@ def get_temperature_color(temp: float) -> tuple:
         tuple: (color_hex, status_text)
     """
     if temp < TEMP_NORMAL_THRESHOLD:
-        return (TEMP_COLOR_NORMAL, "Normal")
+        return (get_color('success'), "Normal")
     elif temp < TEMP_WARN_THRESHOLD:
-        return (TEMP_COLOR_WARNING, "Warm")
+        return (get_color('warning'), "Warm")
     else:
-        return (TEMP_COLOR_CRITICAL, "Hot!")
+        return (get_color('error'), "Hot!")
 
 
 def get_data_path(base_path: str, *parts: str) -> str:

@@ -9,123 +9,14 @@ import os
 from typing import Optional, Dict, Any, List
 from datetime import datetime
 from PyQt5.QtWidgets import QWidget, QFileDialog, QMessageBox
-from PyQt5.QtCore import QThread, pyqtSignal
 from PyQt5 import uic
 
 from utils.logger import setup_logger
+from utils.onnx_utils import validate_onnx_hailo_compatibility, ONNX_AVAILABLE
+from utils.model_detection import detect_yolo_from_pt
+from workers.convert_worker import ConvertWorker
 
 logger = setup_logger(__name__)
-
-
-class ConvertWorker(QThread):
-    """Worker thread for model conversion using ConverterService."""
-    progress = pyqtSignal(int)
-    log = pyqtSignal(str)
-    finished = pyqtSignal(bool, str)
-
-    def __init__(self, conversion_type: str, params: Dict[str, Any]) -> None:
-        super().__init__()
-        self.conversion_type: str = conversion_type
-        self.params: Dict[str, Any] = params
-
-    def run(self) -> None:
-        """Run conversion."""
-        try:
-            logger.debug(f"ConvertWorker started for conversion type: {self.conversion_type}")
-            if self.conversion_type == 'pt_to_onnx':
-                self._convert_pt_to_onnx()
-            elif self.conversion_type == 'onnx_to_hef':
-                self._convert_onnx_to_hef()
-        except Exception as e:
-            logger.error(f"ConvertWorker failed: {e}", exc_info=True)
-            self.finished.emit(False, str(e))
-
-    def _convert_pt_to_onnx(self) -> None:
-        """Convert PyTorch model to ONNX using ConverterService."""
-        from services.converter_service import ConverterService
-
-        pt_path = self.params['pt_path']
-        onnx_path = self.params['onnx_path']
-        input_size = self.params['input_size']
-        batch_size = self.params['batch_size']
-        opset = self.params['opset']
-
-        logger.info(f"Starting PT to ONNX conversion: {pt_path} -> {onnx_path}")
-        logger.debug(f"Conversion parameters: input_size={input_size}, batch_size={batch_size}, opset={opset}")
-
-        # Use ConverterService for proper YOLO version detection
-        service = ConverterService()
-        service.set_callbacks(
-            progress_cb=lambda v: self.progress.emit(v),
-            log_cb=lambda m: self.log.emit(m)
-        )
-
-        try:
-            success = service.convert_pt_to_onnx(
-                pt_path=pt_path,
-                onnx_path=onnx_path,
-                input_size=input_size,
-                batch_size=batch_size,
-                opset_version=opset
-            )
-
-            if success:
-                logger.info(f"PT to ONNX conversion successful: {onnx_path}")
-                self.log.emit(f"✓ Conversion complete: {onnx_path}")
-                self.finished.emit(True, onnx_path)
-            else:
-                logger.error("PT to ONNX conversion failed")
-                self.finished.emit(False, "Conversion failed")
-
-        except Exception as e:
-            logger.error(f"PT to ONNX conversion error: {e}", exc_info=True)
-            self.log.emit(f"Error: {str(e)}")
-            self.finished.emit(False, str(e))
-
-    def _convert_onnx_to_hef(self) -> None:
-        """Convert ONNX model to HEF using ConverterService."""
-        from services.converter_service import ConverterService
-
-        onnx_path = self.params['onnx_path']
-        hef_path = self.params['hef_path']
-        calib_dir = self.params['calib_dir']
-        target = self.params['target']
-
-        logger.info(f"Starting ONNX to HEF compilation: {onnx_path} -> {hef_path}")
-        logger.debug(f"Compilation parameters: calib_dir={calib_dir}, target={target}")
-
-        # Use ConverterService
-        service = ConverterService()
-        service.set_callbacks(
-            progress_cb=lambda v: self.progress.emit(v),
-            log_cb=lambda m: self.log.emit(m)
-        )
-
-        try:
-            success = service.compile_onnx_to_hef(
-                onnx_path=onnx_path,
-                hef_path=hef_path,
-                calib_dir=calib_dir,
-                target=target
-            )
-
-            if success:
-                logger.info(f"ONNX to HEF compilation successful: {hef_path}")
-                self.log.emit(f"✓ Compilation complete: {hef_path}")
-                self.finished.emit(True, hef_path)
-            else:
-                logger.error("ONNX to HEF compilation failed")
-                self.finished.emit(False, "Compilation failed")
-
-        except ImportError as e:
-            logger.error(f"Hailo SDK not installed: {e}")
-            self.log.emit("Error: Hailo SDK not installed")
-            self.log.emit("Please install hailo_dataflow_compiler")
-            self.finished.emit(False, str(e))
-        except Exception as e:
-            logger.error(f"ONNX to HEF compilation error: {e}", exc_info=True)
-            self.log.emit(f"Error: {str(e)}")
-            self.finished.emit(False, str(e))
 
 
 class ConvertTabController:
@@ -135,6 +26,7 @@ class ConvertTabController:
         self.tab: QWidget = tab_widget
         self.base_path: str = base_path
         self.worker: Optional[ConvertWorker] = None
+        self.model_zoo_mode: bool = False
 
         # Load UI into tab
         ui_path = os.path.join(base_path, 'ui', 'tabs', 'convert_tab.ui')
@@ -178,6 +70,13 @@ class ConvertTabController:
 
         # Auto-fill ONNX path after PT selection
         self.tab.editPtPath.textChanged.connect(self._auto_fill_onnx_path)
+        # Auto-fill HEF path after ONNX selection
+        self.tab.editOnnxPath.textChanged.connect(self._auto_fill_hef_path)
+        # Check ONNX compatibility on file selection
+        self.tab.editOnnxPath.textChanged.connect(self._check_onnx_compatibility)
+        # Model Zoo toggle (if button exists in UI)
+        if hasattr(self.tab, 'btnModelZoo'):
+            self.tab.btnModelZoo.clicked.connect(self._toggle_model_zoo)
 
     def _browse_pt_file(self) -> None:
         """Browse for PyTorch model file."""
@@ -240,11 +139,289 @@ class ConvertTabController:
             self.tab.editHefOutPath.setText(path)
 
     def _auto_fill_onnx_path(self, pt_path: str) -> None:
-        """Auto-fill ONNX output path based on PT path."""
-        if pt_path and pt_path.endswith('.pt'):
-            base_name = os.path.basename(pt_path).replace('.pt', '.onnx')
+        """Auto-fill paths and settings based on PT file selection."""
+        if not pt_path:
+            self._reset_detection_ui()
+            return
+
+        # Auto-fill ONNX output path
+        if pt_path.endswith(('.pt', '.pth')):
+            base_name = os.path.basename(pt_path)
+            name_no_ext = os.path.splitext(base_name)[0]
             onnx_dir = os.path.join(self.base_path, 'data', 'models', 'onnx')
-            self.tab.editOnnxOutPath.setText(os.path.join(onnx_dir, base_name))
+            self.tab.editOnnxOutPath.setText(
+                os.path.join(onnx_dir, f"{name_no_ext}.onnx")
+            )
+
+        # Deep PT analysis - detect YOLO version, task, opset
+        if os.path.exists(pt_path):
+            self._run_model_detection(pt_path)
+
+        # Try to detect YOLO project structure
+        project_info = self._detect_yolo_project(pt_path)
+        if project_info:
+            logger.info(f"Detected YOLO project: {project_info}")
+
+            # Auto-fill calibration path
+            if project_info.get('calib_dir') and not self.tab.editCalibPath.text():
+                self.tab.editCalibPath.setText(project_info['calib_dir'])
+                self._log(f"[Auto] Calibration path: {project_info['calib_dir']}")
+
+            # Log detected info
+            if project_info.get('num_classes'):
+                self._log(f"[Auto] Detected classes: {project_info['num_classes']}")
+
+    def _auto_fill_hef_path(self, onnx_path: str) -> None:
+        """Auto-fill HEF output path based on ONNX path."""
+        if not onnx_path:
+            return
+
+        if onnx_path.endswith('.onnx'):
+            base_name = os.path.basename(onnx_path).replace('.onnx', '.hef')
+            hef_dir = os.path.join(self.base_path, 'data', 'models', 'hef')
+            self.tab.editHefOutPath.setText(os.path.join(hef_dir, base_name))
+
+    def _run_model_detection(self, pt_path: str) -> None:
+        """Run deep PT analysis and update detection UI."""
+        try:
+            detection = detect_yolo_from_pt(pt_path)
+
+            yolo_version = detection.get('yolo_version')
+            task_type = detection.get('task_type', 'detect')
+            recommended_opset = detection.get('recommended_opset', 11)
+            model_name = detection.get('model_name_prefix', '')
+
+            # Update detection UI labels
+            if hasattr(self.tab, 'lblYoloVersion'):
+                if yolo_version:
+                    version_text = f"YOLO{yolo_version}"
+                    self.tab.lblYoloVersion.setText(version_text)
+                    self.tab.lblYoloVersion.setStyleSheet(
+                        "color: #1565c0; font-weight: bold;"
+                    )
+                else:
+                    self.tab.lblYoloVersion.setText("Unknown")
+                    self.tab.lblYoloVersion.setStyleSheet(
+                        "color: #999999; font-weight: bold;"
+                    )
+
+            if hasattr(self.tab, 'lblTaskType'):
+                task_colors = {
+                    'detect': '#2e7d32',
+                    'segment': '#6a1b9a',
+                    'classify': '#e65100'
+                }
+                self.tab.lblTaskType.setText(task_type)
+                self.tab.lblTaskType.setStyleSheet(
+                    f"color: {task_colors.get(task_type, '#333333')}; font-weight: bold;"
+                )
+
+            if hasattr(self.tab, 'lblRecommendedOpset'):
+                self.tab.lblRecommendedOpset.setText(str(recommended_opset))
+
+            # Auto-set opset combobox
+            if hasattr(self.tab, 'comboOpset'):
+                opset_str = str(recommended_opset)
+                idx = self.tab.comboOpset.findText(opset_str)
+                if idx >= 0:
+                    self.tab.comboOpset.setCurrentIndex(idx)
+
+            # Log detection result
+            if yolo_version:
+                self._log(
+                    f"[{self._timestamp()}] Detected: YOLO{yolo_version} "
+                    f"{task_type} ({model_name}) -> opset={recommended_opset}"
+                )
+            else:
+                self._log(
+                    f"[{self._timestamp()}] Model type: {task_type} "
+                    f"(YOLO version not detected)"
+                )
+
+            # Store for later use in HEF compilation
+            self._detected_model_info = detection
+
+        except Exception as e:
+            logger.error(f"Model detection failed: {e}")
+            self._reset_detection_ui()
+
+    def _reset_detection_ui(self) -> None:
+        """Reset model detection UI labels to defaults."""
+        if hasattr(self.tab, 'lblYoloVersion'):
+            self.tab.lblYoloVersion.setText("-")
+            self.tab.lblYoloVersion.setStyleSheet("color: #999999; font-weight: bold;")
+        if hasattr(self.tab, 'lblTaskType'):
+            self.tab.lblTaskType.setText("-")
+            self.tab.lblTaskType.setStyleSheet("color: #999999; font-weight: bold;")
+        if hasattr(self.tab, 'lblRecommendedOpset'):
+            self.tab.lblRecommendedOpset.setText("-")
+        self._detected_model_info = None
+
+    def _detect_yolo_project(self, pt_path: str) -> Optional[dict]:
+        """
+        Detect YOLO project structure from PT file path.
+
+        Looks for:
+        - data.yaml (class count, dataset paths)
+        - train/images directory (calibration)
+        - Project structure patterns
+
+        Args:
+            pt_path: Path to PyTorch model file.
+
+        Returns:
+            Dict with project info or None if not detected.
+        """
+        from pathlib import Path
+
+        pt_dir = Path(pt_path).parent
+
+        # Search upward for data.yaml (max 4 levels)
+        search_dirs = [pt_dir]
+        current = pt_dir
+        for _ in range(4):
+            current = current.parent
+            search_dirs.append(current)
+
+        data_yaml_path = None
+        project_root = None
+        for search_dir in search_dirs:
+            candidate = search_dir / 'data.yaml'
+            if candidate.exists():
+                data_yaml_path = candidate
+                project_root = search_dir
+                break
+
+        if not data_yaml_path:
+            return None
+
+        result = {'project_root': str(project_root)}
+
+        # Parse data.yaml for class info
+        data_config = None
+        try:
+            import yaml
+            with open(data_yaml_path, 'r') as f:
+                data_config = yaml.safe_load(f)
+
+            if data_config:
+                nc = data_config.get('nc')
+                if nc:
+                    result['num_classes'] = int(nc)
+
+                names = data_config.get('names')
+                if names:
+                    result['class_names'] = names
+
+        except Exception:
+            pass
+
+        # Find calibration images directory
+        calib_candidates = [
+            project_root / 'train' / 'images',
+            project_root / 'dataset' / 'train' / 'images',
+            project_root / 'data' / 'train' / 'images',
+            project_root / 'images' / 'train',
+        ]
+
+        # Also check paths from data.yaml
+        try:
+            if data_config and 'train' in data_config:
+                train_path = data_config['train']
+                if not os.path.isabs(train_path):
+                    train_path = str(project_root / train_path)
+                calib_candidates.insert(0, Path(train_path))
+        except Exception:
+            pass
+
+        for calib_dir in calib_candidates:
+            if calib_dir.exists() and calib_dir.is_dir():
+                # Verify it has images
+                image_exts = {'.jpg', '.jpeg', '.png', '.bmp'}
+                has_images = any(
+                    f.suffix.lower() in image_exts
+                    for f in calib_dir.iterdir()
+                    if f.is_file()
+                )
+                if has_images:
+                    result['calib_dir'] = str(calib_dir)
+                    break
+
+        # Use deep detection results if available, fallback to path patterns
+        if hasattr(self, '_detected_model_info') and self._detected_model_info:
+            result['task_type'] = self._detected_model_info.get('task_type', 'detect')
+            result['yolo_version'] = self._detected_model_info.get('yolo_version')
+            result['recommended_opset'] = self._detected_model_info.get('recommended_opset')
+            result['model_name'] = self._detected_model_info.get('model_name_prefix')
+        else:
+            # Fallback: detect task type from path
+            path_lower = pt_path.lower()
+            if '-seg' in path_lower or 'segment' in path_lower:
+                result['task_type'] = 'segment'
+            elif '-cls' in path_lower or 'classify' in path_lower:
+                result['task_type'] = 'classify'
+            else:
+                result['task_type'] = 'detect'
+
+        return result
+
+    def _check_onnx_compatibility(self, onnx_path: str) -> None:
+        """Check ONNX model compatibility when file is selected."""
+        if not onnx_path or not os.path.exists(onnx_path):
+            return
+
+        if not ONNX_AVAILABLE:
+            self._log(f"[{self._timestamp()}] Warning: ONNX package not installed, cannot validate")
+            return
+
+        try:
+            result = validate_onnx_hailo_compatibility(onnx_path)
+
+            if result['compatible']:
+                self._log(
+                    f"[{self._timestamp()}] ONNX compatible "
+                    f"(naming: {result['naming_style']})"
+                )
+            else:
+                for error in result.get('errors', []):
+                    self._log(f"[{self._timestamp()}] ONNX Error: {error}")
+                if result.get('recommended_action'):
+                    self._log(
+                        f"[{self._timestamp()}] Recommendation: "
+                        f"{result['recommended_action']}"
+                    )
+
+            for warning in result.get('warnings', []):
+                self._log(f"[{self._timestamp()}] Warning: {warning}")
+
+        except Exception as e:
+            logger.error(f"ONNX compatibility check failed: {e}")
+            self._log(f"[{self._timestamp()}] Warning: Could not validate ONNX: {e}")
+
+    def _toggle_model_zoo(self) -> None:
+        """Toggle Model Zoo standard mode."""
+        self.model_zoo_mode = not self.model_zoo_mode
+
+        if self.model_zoo_mode:
+            self._log(f"[{self._timestamp()}] Model Zoo mode enabled - using standard model")
+            # Disable ONNX file selection
+            if hasattr(self.tab, 'editOnnxPath'):
+                self.tab.editOnnxPath.setEnabled(False)
+                self.tab.editOnnxPath.setPlaceholderText("Using Hailo Model Zoo standard model...")
+            if hasattr(self.tab, 'btnBrowseOnnx'):
+                self.tab.btnBrowseOnnx.setEnabled(False)
+            if hasattr(self.tab, 'btnModelZoo'):
+                self.tab.btnModelZoo.setText("Use Custom ONNX")
+        else:
+            self._log(f"[{self._timestamp()}] Model Zoo mode disabled - using custom ONNX")
+            # Re-enable ONNX file selection
+            if hasattr(self.tab, 'editOnnxPath'):
+                self.tab.editOnnxPath.setEnabled(True)
+                self.tab.editOnnxPath.setPlaceholderText("")
+            if hasattr(self.tab, 'btnBrowseOnnx'):
+                self.tab.btnBrowseOnnx.setEnabled(True)
+            if hasattr(self.tab, 'btnModelZoo'):
+                self.tab.btnModelZoo.setText("Use Model Zoo")
 
     def _start_pt_to_onnx(self) -> None:
         """Start PT to ONNX conversion."""
@@ -280,21 +457,23 @@ class ConvertTabController:
         self.worker.progress.connect(self._update_progress)
         self.worker.log.connect(self._log)
         self.worker.finished.connect(self._on_conversion_finished)
+        self.worker.error.connect(self._on_conversion_error)
         self.worker.start()
 
     def _start_onnx_to_hef(self) -> None:
         """Start ONNX to HEF compilation."""
-        onnx_path = self.tab.editOnnxPath.text()
+        onnx_path = self.tab.editOnnxPath.text() if not self.model_zoo_mode else ''
         hef_path = self.tab.editHefOutPath.text()
         calib_dir = self.tab.editCalibPath.text()
 
-        if not onnx_path:
-            QMessageBox.warning(self.tab, "Warning", "Please select an ONNX file.")
-            return
+        if not self.model_zoo_mode:
+            if not onnx_path:
+                QMessageBox.warning(self.tab, "Warning", "Please select an ONNX file.")
+                return
 
-        if not os.path.exists(onnx_path):
-            QMessageBox.warning(self.tab, "Warning", f"ONNX file not found: {onnx_path}")
-            return
+            if not os.path.exists(onnx_path):
+                QMessageBox.warning(self.tab, "Warning", f"ONNX file not found: {onnx_path}")
+                return
 
         if not os.path.exists(calib_dir):
             QMessageBox.warning(
@@ -306,11 +485,24 @@ class ConvertTabController:
         # Ensure output directory exists
         os.makedirs(os.path.dirname(hef_path), exist_ok=True)
 
+        # Build params with detection info
+        model_type = 'detect'
+        model_name = 'yolov5s'
+        calib_size = (self.tab.spinWidth.value(), self.tab.spinHeight.value())
+
+        if hasattr(self, '_detected_model_info') and self._detected_model_info:
+            task = self._detected_model_info.get('task_type', 'detect')
+            model_type = task
+            model_name = self._detected_model_info.get('model_name_prefix', 'yolov5s')
+
         params = {
             'onnx_path': onnx_path,
             'hef_path': hef_path,
             'calib_dir': calib_dir,
-            'target': self.tab.comboTarget.currentText()
+            'target': self.tab.comboTarget.currentText(),
+            'model_type': model_type,
+            'model_name': model_name,
+            'calib_size': calib_size,
         }
 
         self._log(f"[{self._timestamp()}] Starting HEF compilation...")
@@ -320,6 +512,7 @@ class ConvertTabController:
         self.worker.progress.connect(self._update_progress)
         self.worker.log.connect(self._log)
         self.worker.finished.connect(self._on_conversion_finished)
+        self.worker.error.connect(self._on_conversion_error)
         self.worker.start()
 
     def _on_conversion_finished(self, success: bool, result: str) -> None:
@@ -338,6 +531,11 @@ class ConvertTabController:
                 self.tab, "Error",
                 f"Conversion failed:\n\n{result}"
             )
+
+    def _on_conversion_error(self, error_type: str, error_message: str) -> None:
+        """Handle conversion error with type information."""
+        self._log(f"[{self._timestamp()}] Error [{error_type}]: {error_message}")
+        logger.error(f"Conversion error [{error_type}]: {error_message}")
 
     def _update_progress(self, value: int) -> None:
         """Update progress bar."""

@@ -15,6 +15,7 @@ from PyQt5 import uic
 import numpy as np
 
 from utils.logger import setup_logger
+from utils.styles import get_color
 
 logger = setup_logger(__name__)
 
@@ -308,7 +309,7 @@ class InferenceTabController:
 
             model_name = os.path.basename(hef_path)
             self.tab.lblModelInfo.setText(f"Loaded: {model_name}")
-            self.tab.lblModelInfo.setStyleSheet("color: #4caf50; font-style: normal;")
+            self.tab.lblModelInfo.setStyleSheet(f"color: {get_color('success')}; font-style: normal;")
 
             logger.info(f"Model loaded successfully: {model_name}")
             QMessageBox.information(self.tab, "Success", f"Model loaded: {model_name}")
@@ -326,7 +327,7 @@ class InferenceTabController:
         logger.debug("Unloading model")
         self.model_loaded = False
         self.tab.lblModelInfo.setText("No model loaded")
-        self.tab.lblModelInfo.setStyleSheet("color: #888888; font-style: italic;")
+        self.tab.lblModelInfo.setStyleSheet(f"color: {get_color('text_secondary')}; font-style: italic;")
         logger.info("Model unloaded")
 
     def start_inference(self) -> None:
@@ -400,7 +401,7 @@ class InferenceTabController:
             # Convert to QImage
             h, w, ch = resized.shape
             bytes_per_line = ch * w
-            q_img = QImage(resized.data, w, h, bytes_per_line, QImage.Format_RGB888)
+            q_img = QImage(resized.data, w, h, bytes_per_line, QImage.Format_RGB888).copy()
 
             # Display
             self.tab.lblVideoPreview.setPixmap(QPixmap.fromImage(q_img))
