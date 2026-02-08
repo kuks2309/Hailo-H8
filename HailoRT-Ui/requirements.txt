@@ -1,27 +1,32 @@
 # Hailo-H8 Control Panel Dependencies
+# Python 3.10+ required
 
 # Qt5 UI Framework
 PyQt5>=5.15.0
 
 # Core dependencies
-numpy>=1.21.0
+numpy>=1.21.0,<2.0.0
 Pillow>=9.0.0
 PyYAML>=6.0
+psutil>=5.9.0
 
 # Video/Image processing
 opencv-python>=4.5.0
+matplotlib>=3.5.0
 
 # PyTorch (for model conversion)
 torch>=1.9.0
 torchvision>=0.10.0
 
-# ONNX (for model verification)
-onnx>=1.12.0
+# ONNX (for model verification & conversion)
+onnx>=1.12.0,<1.17.0
 onnxruntime>=1.12.0
+onnx-simplifier>=0.4.0
 
-# YOLO support (optional)
-# ultralytics>=8.0.0
+# YOLO support
+ultralytics>=8.0.0
 
-# Hailo SDK (install separately from Hailo website)
-# hailort
-# hailo_sdk_client
+# Hailo SDK (install separately from install_sw/ directory)
+# pip install install_sw/hailort-*.whl
+# pip install install_sw/hailo_dataflow_compiler-*.whl
+# pip install install_sw/hailo_model_zoo-*.whl
