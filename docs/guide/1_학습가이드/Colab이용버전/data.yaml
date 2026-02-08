@@ -1,0 +1,6 @@
+names:  # Classes name
+- class1
+- class2
+
+train: /content/yolov5/images  # train images 경로
+val: /content/yolov5/images # val images 경로

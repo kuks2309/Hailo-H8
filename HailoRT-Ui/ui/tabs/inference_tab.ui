@@ -1,0 +1,427 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>InferenceTab</class>
+ <widget class="QWidget" name="InferenceTab">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+    QWidget {
+      background-color: #1e1e1e;
+      color: #cccccc;
+    }
+    QGroupBox {
+      font-weight: bold;
+      border: 1px solid #3c3c3c;
+      border-radius: 5px;
+      margin-top: 10px;
+      padding-top: 10px;
+      background-color: #252526;
+    }
+    QGroupBox::title {
+      subcontrol-origin: margin;
+      left: 10px;
+      padding: 0 5px;
+      color: #007acc;
+    }
+    QLineEdit, QComboBox {
+      background-color: #3c3c3c;
+      color: #ffffff;
+      border: 1px solid #555555;
+      border-radius: 4px;
+      padding: 6px;
+    }
+    QPushButton {
+      background-color: #0e639c;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    QPushButton:hover {
+      background-color: #1177bb;
+    }
+    QPushButton:disabled {
+      background-color: #3c3c3c;
+      color: #666666;
+    }
+    QPushButton#btnStart {
+      background-color: #4caf50;
+      font-size: 14px;
+    }
+    QPushButton#btnStart:hover {
+      background-color: #66bb6a;
+    }
+    QPushButton#btnStop {
+      background-color: #f44336;
+      font-size: 14px;
+    }
+    QPushButton#btnStop:hover {
+      background-color: #e57373;
+    }
+    QTableWidget {
+      background-color: #1e1e1e;
+      color: #cccccc;
+      border: 1px solid #3c3c3c;
+      gridline-color: #3c3c3c;
+    }
+    QTableWidget::item {
+      padding: 5px;
+    }
+    QTableWidget::item:selected {
+      background-color: #264f78;
+    }
+    QHeaderView::section {
+      background-color: #2d2d2d;
+      color: #cccccc;
+      padding: 8px;
+      border: 1px solid #3c3c3c;
+      font-weight: bold;
+    }
+    QLabel#lblVideoPreview {
+      background-color: #000000;
+      border: 2px solid #3c3c3c;
+      border-radius: 5px;
+    }
+   </string>
+  </property>
+  <layout class="QVBoxLayout" name="mainLayout">
+   <property name="spacing">
+    <number>15</number>
+   </property>
+   <property name="leftMargin">
+    <number>15</number>
+   </property>
+   <property name="topMargin">
+    <number>15</number>
+   </property>
+   <property name="rightMargin">
+    <number>15</number>
+   </property>
+   <property name="bottomMargin">
+    <number>15</number>
+   </property>
+   <item>
+    <layout class="QHBoxLayout" name="topLayout">
+     <property name="spacing">
+      <number>15</number>
+     </property>
+     <item>
+      <widget class="QGroupBox" name="groupModel">
+       <property name="title">
+        <string>Model</string>
+       </property>
+       <property name="maximumWidth">
+        <number>350</number>
+       </property>
+       <layout class="QVBoxLayout" name="modelLayout">
+        <item>
+         <layout class="QHBoxLayout" name="hefLayout">
+          <item>
+           <widget class="QLineEdit" name="editHefPath">
+            <property name="placeholderText">
+             <string>Select HEF model...</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnBrowseHef">
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="maximumWidth">
+             <number>40</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnLoadModel">
+          <property name="text">
+           <string>Load Model</string>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QLabel" name="lblModelInfo">
+          <property name="text">
+           <string>No model loaded</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">color: #888888; font-style: italic;</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupSource">
+       <property name="title">
+        <string>Input Source</string>
+       </property>
+       <property name="maximumWidth">
+        <number>350</number>
+       </property>
+       <layout class="QVBoxLayout" name="sourceLayout">
+        <item>
+         <layout class="QHBoxLayout" name="sourceTypeLayout">
+          <item>
+           <widget class="QLabel" name="lblSourceType">
+            <property name="text">
+             <string>Source:</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QComboBox" name="comboSource">
+            <item>
+             <property name="text">
+              <string>Camera</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Video File</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Image File</string>
+             </property>
+            </item>
+            <item>
+             <property name="text">
+              <string>Image Folder</string>
+             </property>
+            </item>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="sourcePathLayout">
+          <item>
+           <widget class="QLineEdit" name="editSourcePath">
+            <property name="placeholderText">
+             <string>Camera index or file path...</string>
+            </property>
+            <property name="text">
+             <string>0</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnBrowseSource">
+            <property name="text">
+             <string>...</string>
+            </property>
+            <property name="maximumWidth">
+             <number>40</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupControls">
+       <property name="title">
+        <string>Controls</string>
+       </property>
+       <layout class="QHBoxLayout" name="controlsLayout">
+        <item>
+         <widget class="QPushButton" name="btnStart">
+          <property name="text">
+           <string>▶ Start</string>
+          </property>
+          <property name="minimumHeight">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnStop">
+          <property name="text">
+           <string>■ Stop</string>
+          </property>
+          <property name="enabled">
+           <bool>false</bool>
+          </property>
+          <property name="minimumHeight">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QPushButton" name="btnCapture">
+          <property name="text">
+           <string>📷 Capture</string>
+          </property>
+          <property name="minimumHeight">
+           <number>50</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="contentLayout">
+     <property name="spacing">
+      <number>15</number>
+     </property>
+     <item>
+      <widget class="QGroupBox" name="groupPreview">
+       <property name="title">
+        <string>Video Preview</string>
+       </property>
+       <layout class="QVBoxLayout" name="previewLayout">
+        <item>
+         <widget class="QLabel" name="lblVideoPreview">
+          <property name="minimumSize">
+           <size>
+            <width>640</width>
+            <height>480</height>
+           </size>
+          </property>
+          <property name="text">
+           <string>No video input</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <layout class="QVBoxLayout" name="rightPanelLayout">
+       <item>
+        <widget class="QGroupBox" name="groupStats">
+         <property name="title">
+          <string>Performance</string>
+         </property>
+         <layout class="QGridLayout" name="statsLayout">
+          <item row="0" column="0">
+           <widget class="QLabel" name="lblFpsLabel">
+            <property name="text">
+             <string>FPS:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="lblFpsValue">
+            <property name="text">
+             <string>0.0</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font-size: 24px; font-weight: bold; color: #4caf50;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="lblLatencyLabel">
+            <property name="text">
+             <string>Latency:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="lblLatencyValue">
+            <property name="text">
+             <string>0.0 ms</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font-size: 18px; font-weight: bold; color: #2196f3;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="lblFramesLabel">
+            <property name="text">
+             <string>Frames:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="lblFramesValue">
+            <property name="text">
+             <string>0</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font-size: 18px; font-weight: bold; color: #ff9800;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+       <item>
+        <widget class="QGroupBox" name="groupResults">
+         <property name="title">
+          <string>Detection Results</string>
+         </property>
+         <layout class="QVBoxLayout" name="resultsLayout">
+          <item>
+           <widget class="QTableWidget" name="tableResults">
+            <property name="columnCount">
+             <number>3</number>
+            </property>
+            <property name="rowCount">
+             <number>0</number>
+            </property>
+            <attribute name="horizontalHeaderStretchLastSection">
+             <bool>true</bool>
+            </attribute>
+            <column>
+             <property name="text">
+              <string>Class</string>
+             </property>
+             <property name="width">
+              <number>120</number>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>Confidence</string>
+             </property>
+             <property name="width">
+              <number>80</number>
+             </property>
+            </column>
+            <column>
+             <property name="text">
+              <string>Count</string>
+             </property>
+             <property name="width">
+              <number>60</number>
+             </property>
+            </column>
+           </widget>
+          </item>
+         </layout>
+        </widget>
+       </item>
+      </layout>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

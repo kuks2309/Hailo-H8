@@ -1,0 +1,45 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+.venv/
+venv/
+ENV/
+*.egg-info/
+dist/
+build/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Project specific
+*.hef
+*.onnx
+*.har
+*.pt
+data/models/
+data/output/
+data/calibration/images/*.jpg
+data/calibration/images/*.png
+HailoRT-Ui/data/
+logs/
+*.log
+
+# Large files
+*.zip
+
+# Virtual environment & SDK
+hailo_env/
+install_sw/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# OMC state
+.omc/

@@ -1,0 +1,21 @@
+# Hailo-H8 Control Panel Configuration
+
+paths:
+  models: data/models
+  calibration: data/calibration/images
+  output: data/output
+
+inference:
+  confidence_threshold: 0.5
+  iou_threshold: 0.45
+  max_detections: 100
+
+display:
+  show_bboxes: true
+  show_labels: true
+  show_confidence: true
+  show_fps: true
+
+device:
+  target: hailo8
+  auto_connect: false

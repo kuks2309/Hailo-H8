@@ -1,0 +1,405 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DeviceTab</class>
+ <widget class="QWidget" name="DeviceTab">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>1100</width>
+    <height>700</height>
+   </rect>
+  </property>
+  <property name="styleSheet">
+   <string notr="true">
+    QWidget {
+      background-color: #1e1e1e;
+      color: #cccccc;
+    }
+    QGroupBox {
+      font-weight: bold;
+      border: 1px solid #3c3c3c;
+      border-radius: 5px;
+      margin-top: 10px;
+      padding-top: 10px;
+      background-color: #252526;
+    }
+    QGroupBox::title {
+      subcontrol-origin: margin;
+      left: 10px;
+      padding: 0 5px;
+      color: #007acc;
+    }
+    QLabel {
+      color: #cccccc;
+    }
+    QPushButton {
+      background-color: #0e639c;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      border-radius: 4px;
+      font-weight: bold;
+    }
+    QPushButton:hover {
+      background-color: #1177bb;
+    }
+    QPushButton:pressed {
+      background-color: #0d5a8c;
+    }
+    QPushButton:disabled {
+      background-color: #3c3c3c;
+      color: #666666;
+    }
+    QProgressBar {
+      border: 1px solid #3c3c3c;
+      border-radius: 3px;
+      text-align: center;
+      background-color: #2d2d2d;
+    }
+    QProgressBar::chunk {
+      background-color: #007acc;
+      border-radius: 2px;
+    }
+   </string>
+  </property>
+  <layout class="QHBoxLayout" name="horizontalLayout">
+   <property name="spacing">
+    <number>20</number>
+   </property>
+   <property name="leftMargin">
+    <number>20</number>
+   </property>
+   <property name="topMargin">
+    <number>20</number>
+   </property>
+   <property name="rightMargin">
+    <number>20</number>
+   </property>
+   <property name="bottomMargin">
+    <number>20</number>
+   </property>
+   <item>
+    <layout class="QVBoxLayout" name="leftColumn">
+     <property name="spacing">
+      <number>15</number>
+     </property>
+     <item>
+      <widget class="QGroupBox" name="groupDeviceStatus">
+       <property name="title">
+        <string>Device Status</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_2">
+        <item>
+         <layout class="QFormLayout" name="formLayout">
+          <property name="verticalSpacing">
+           <number>12</number>
+          </property>
+          <item row="0" column="0">
+           <widget class="QLabel" name="labelStatus">
+            <property name="text">
+             <string>Status:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="0" column="1">
+           <widget class="QLabel" name="lblStatusValue">
+            <property name="text">
+             <string>● Disconnected</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">color: #f44336; font-weight: bold;</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="0">
+           <widget class="QLabel" name="labelDevice">
+            <property name="text">
+             <string>Device:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="1" column="1">
+           <widget class="QLabel" name="lblDeviceValue">
+            <property name="text">
+             <string>-</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="0">
+           <widget class="QLabel" name="labelSerial">
+            <property name="text">
+             <string>Serial:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="2" column="1">
+           <widget class="QLabel" name="lblSerialValue">
+            <property name="text">
+             <string>-</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="0">
+           <widget class="QLabel" name="labelFirmware">
+            <property name="text">
+             <string>Firmware:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="3" column="1">
+           <widget class="QLabel" name="lblFirmwareValue">
+            <property name="text">
+             <string>-</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="0">
+           <widget class="QLabel" name="labelDriver">
+            <property name="text">
+             <string>Driver:</string>
+            </property>
+           </widget>
+          </item>
+          <item row="4" column="1">
+           <widget class="QLabel" name="lblDriverValue">
+            <property name="text">
+             <string>-</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="buttonLayout">
+          <item>
+           <widget class="QPushButton" name="btnConnect">
+            <property name="text">
+             <string>Connect</string>
+            </property>
+            <property name="minimumHeight">
+             <number>35</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnDisconnect">
+            <property name="text">
+             <string>Disconnect</string>
+            </property>
+            <property name="enabled">
+             <bool>false</bool>
+            </property>
+            <property name="minimumHeight">
+             <number>35</number>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <widget class="QPushButton" name="btnRefresh">
+            <property name="text">
+             <string>Refresh</string>
+            </property>
+            <property name="minimumHeight">
+             <number>35</number>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupTemperature">
+       <property name="title">
+        <string>Temperature</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_3">
+        <item>
+         <widget class="QLabel" name="lblTempValue">
+          <property name="text">
+           <string>-- °C</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">font-size: 36px; font-weight: bold; color: #4caf50;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressTemp">
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="textVisible">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <layout class="QHBoxLayout" name="tempRangeLayout">
+          <item>
+           <widget class="QLabel" name="lblTempMin">
+            <property name="text">
+             <string>0°C</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font-size: 10px; color: #888888;</string>
+            </property>
+           </widget>
+          </item>
+          <item>
+           <spacer name="horizontalSpacer_2">
+            <property name="orientation">
+             <enum>Qt::Horizontal</enum>
+            </property>
+           </spacer>
+          </item>
+          <item>
+           <widget class="QLabel" name="lblTempMax">
+            <property name="text">
+             <string>100°C</string>
+            </property>
+            <property name="styleSheet">
+             <string notr="true">font-size: 10px; color: #888888;</string>
+            </property>
+           </widget>
+          </item>
+         </layout>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupPower">
+       <property name="title">
+        <string>Power Consumption</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_4">
+        <item>
+         <widget class="QLabel" name="lblPowerValue">
+          <property name="text">
+           <string>-- W</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">font-size: 36px; font-weight: bold; color: #2196f3;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressPower">
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="textVisible">
+           <bool>false</bool>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <spacer name="verticalSpacer">
+       <property name="orientation">
+        <enum>Qt::Vertical</enum>
+       </property>
+       <property name="sizeHint" stdset="0">
+        <size>
+         <width>20</width>
+         <height>40</height>
+        </size>
+       </property>
+      </spacer>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="rightColumn">
+     <item>
+      <widget class="QGroupBox" name="groupUtilization">
+       <property name="title">
+        <string>Device Utilization</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_5">
+        <item>
+         <widget class="QLabel" name="lblUtilValue">
+          <property name="text">
+           <string>-- %</string>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">font-size: 48px; font-weight: bold; color: #ff9800;</string>
+          </property>
+          <property name="alignment">
+           <set>Qt::AlignCenter</set>
+          </property>
+         </widget>
+        </item>
+        <item>
+         <widget class="QProgressBar" name="progressUtil">
+          <property name="minimum">
+           <number>0</number>
+          </property>
+          <property name="maximum">
+           <number>100</number>
+          </property>
+          <property name="value">
+           <number>0</number>
+          </property>
+          <property name="minimumHeight">
+           <number>30</number>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+     <item>
+      <widget class="QGroupBox" name="groupInfo">
+       <property name="title">
+        <string>Device Information</string>
+       </property>
+       <layout class="QVBoxLayout" name="verticalLayout_6">
+        <item>
+         <widget class="QTextEdit" name="txtDeviceInfo">
+          <property name="readOnly">
+           <bool>true</bool>
+          </property>
+          <property name="styleSheet">
+           <string notr="true">
+            QTextEdit {
+              background-color: #1e1e1e;
+              color: #cccccc;
+              border: 1px solid #3c3c3c;
+              font-family: 'Consolas', 'Monaco', monospace;
+              font-size: 12px;
+            }
+           </string>
+          </property>
+          <property name="html">
+           <string>&lt;p&gt;No device information available.&lt;/p&gt;&lt;p&gt;Click 'Connect' to detect Hailo device.&lt;/p&gt;</string>
+          </property>
+         </widget>
+        </item>
+       </layout>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

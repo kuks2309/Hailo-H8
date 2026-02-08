@@ -1,0 +1,50 @@
+# Hailo-Compiler-UI Configuration
+
+# Application settings
+app:
+  name: "Hailo Compiler"
+  version: "1.0.0"
+
+# Default conversion parameters
+conversion:
+  pt_to_onnx:
+    input_size: [640, 640]
+    batch_size: 1
+    opset_version: 17
+
+  onnx_to_hef:
+    target: "hailo8"
+    calib_size: [640, 640]
+    max_calib_images: 500
+
+# Supported targets
+targets:
+  - hailo8
+  - hailo8l
+  - hailo15h
+
+# Supported opset versions
+opset_versions:
+  - 11
+  - 12
+  - 13
+  - 14
+  - 15
+  - 16
+  - 17
+  - 18
+
+# File extensions
+extensions:
+  pytorch:
+    - .pt
+    - .pth
+  onnx:
+    - .onnx
+  hef:
+    - .hef
+  images:
+    - .jpg
+    - .jpeg
+    - .png
+    - .bmp

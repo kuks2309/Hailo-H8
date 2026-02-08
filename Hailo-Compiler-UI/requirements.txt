@@ -1,0 +1,33 @@
+# Hailo-Compiler-UI Dependencies
+
+# Qt5 UI Framework
+PyQt5>=5.15.0
+
+# Core dependencies
+numpy>=1.21.0
+Pillow>=9.0.0
+PyYAML>=6.0
+
+# Image processing
+opencv-python>=4.5.0
+
+# PyTorch (for model conversion)
+torch>=1.9.0
+torchvision>=0.10.0
+
+# ONNX (for model verification and export)
+# NOTE: onnx pinned to 1.16.0 for hailo_sdk_client compatibility
+# onnx 1.17+ removed onnx.mapping module which hailo_sdk_client requires
+onnx==1.16.0
+onnxsim>=0.4.0
+# onnxscript removed - requires onnx>=1.17, conflicts with hailo_sdk_client
+
+# YOLO support
+ultralytics>=8.0.0
+yolov5>=7.0.0
+
+# Protobuf (pinned for Hailo SDK compatibility)
+protobuf==3.20.3
+
+# Hailo SDK (install separately)
+# hailo_sdk_client  # Required for HEF compilation
