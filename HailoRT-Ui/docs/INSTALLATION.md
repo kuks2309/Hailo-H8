@@ -1,5 +1,25 @@
 # 설치 가이드
 
+## 빠른 설치 (자동)
+
+프로젝트 루트에서 실행:
+
+```bash
+cd /path/to/Hailo-H8
+bash setup-env-ubuntu2204.sh
+```
+
+이 스크립트가 시스템 패키지, Python 가상환경(`hailo_env`), 의존성, Hailo SDK를 자동으로 설치합니다.
+HailoRT-Ui와 Hailo-Compiler-UI 모두 설치됩니다.
+
+> WSL2 환경에서는 `bash setup-env-wsl2.sh`를 사용하세요.
+
+---
+
+## 수동 설치
+
+아래는 수동 설치를 위한 상세 가이드입니다.
+
 ## 목차
 
 1. [시스템 요구사항](#시스템-요구사항)
@@ -29,8 +49,8 @@
 ### 가상환경 생성 (권장)
 
 ```bash
-# 프로젝트 디렉토리로 이동
-cd /home/life/Project/Hailo-H8
+# 프로젝트 루트로 이동
+cd Hailo-H8
 
 # 가상환경 생성
 python3 -m venv hailo_env
@@ -49,7 +69,7 @@ pip install --upgrade pip
 ### 기본 의존성
 
 ```bash
-cd /home/life/Project/Hailo-H8/HailoRT-Ui
+cd Hailo-H8/HailoRT-Ui
 pip install -r requirements.txt
 ```
 
@@ -171,7 +191,7 @@ pyqt5-tools designer
 모든 설치가 완료되면 애플리케이션을 실행하여 확인합니다:
 
 ```bash
-cd /home/life/Project/Hailo-H8/HailoRT-Ui
+cd Hailo-H8/HailoRT-Ui
 python main.py
 ```
 

@@ -153,8 +153,7 @@ ModuleNotFoundError: No module named 'onnx.mapping'
 | File | Changes |
 |------|---------|
 | `Hailo-Compiler-UI/requirements.txt` | `onnx==1.16.0` 핀, `onnxscript` 주석 처리 |
-| `Hailo-Compiler-UI/install.sh` | Linux/macOS 설치 스크립트 신규 생성 |
-| `Hailo-Compiler-UI/install.bat` | Windows 설치 스크립트 신규 생성 |
+| `setup-env-wsl2.sh` | WSL2 설치 스크립트 |
 
 **설치 스크립트 핵심 로직:**
 ```bash
@@ -169,7 +168,7 @@ pip install -r requirements.txt
 1. `requirements.txt`에 버전 핀 명시: `onnx==1.16.0`, `protobuf==3.20.3`
 2. 새 패키지 설치 전 충돌 확인: `pip install --dry-run <package>`
 3. 의존성 업그레이드 방지: `pip install --no-deps <package>`
-4. 설치 스크립트 사용 권장: `./install.sh` 또는 `install.bat`
+4. 설치 스크립트 사용 권장: `bash setup-env-wsl2.sh` (WSL2) 또는 `bash setup-env-ubuntu2204.sh` (Ubuntu 22.04)
 
 **참고:**
 - PyTorch 2.x ONNX export는 onnxscript 없이도 기본 기능 작동
@@ -772,12 +771,12 @@ calibration -> calibset_size
 
 **올바른 캘리브레이션 경로:**
 ```
-/home/life/Project/Yolov5_datasets/<dataset-name>/train/images/
+<datasets-path>/<dataset-name>/train/images/
 ```
 
 **잘못된 경로 (사용하지 않음):**
 ```
-/home/life/Project/Hailo-H8/Hailo-Compiler-UI/data/calibration/images/  ❌
+Hailo-H8/Hailo-Compiler-UI/data/calibration/images/  ❌
 ```
 
 **해결 방법:**

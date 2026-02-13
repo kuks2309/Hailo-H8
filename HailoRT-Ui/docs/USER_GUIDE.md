@@ -25,7 +25,7 @@ Hailo-H8 Control Panel은 4개의 주요 탭으로 구성됩니다:
 ### 실행 방법
 
 ```bash
-cd /home/life/Project/Hailo-H8/HailoRT-Ui
+cd Hailo-H8/HailoRT-Ui
 python main.py
 ```
 

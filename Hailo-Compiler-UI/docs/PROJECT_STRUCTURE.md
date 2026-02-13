@@ -190,15 +190,17 @@ OnnxToHefPanel
 ## 실행 방법
 
 ```bash
+# 환경 설치 (최초 1회)
+cd ~/Project/Hailo-H8
+bash setup-env-wsl2.sh          # WSL2 환경
+bash setup-env-ubuntu2204.sh    # Ubuntu 22.04 네이티브 환경
+
 # 가상환경 활성화
 source ~/Project/Hailo-H8/hailo_env/bin/activate
 
 # 실행
 cd ~/Project/Hailo-H8/Hailo-Compiler-UI
 python main.py
-
-# 또는 alias 사용
-Hailo-CUI
 ```
 
 ---
@@ -221,5 +223,7 @@ Hailo-CUI
 
 | 프로젝트 | 위치 | 설명 |
 |----------|------|------|
-| HailoRT-Ui | `../HailoRT-Ui/` | Windows용 추론/모니터링 UI |
-| hailo_env | `../hailo_env/` | 공용 Python 가상환경 |
+| HailoRT-Ui | `../HailoRT-Ui/` | Ubuntu 22.04용 추론/모니터링 UI |
+| hailo_env | `../hailo_env/` | 공용 Python 가상환경 (`setup-env-*.sh`로 생성) |
+| setup-env-wsl2.sh | `../setup-env-wsl2.sh` | WSL2 환경 설치 스크립트 |
+| setup-env-ubuntu2204.sh | `../setup-env-ubuntu2204.sh` | Ubuntu 22.04 환경 설치 스크립트 |

@@ -1,5 +1,24 @@
 # Hailo-Compiler-UI 설치 가이드
 
+## 빠른 설치 (자동)
+
+프로젝트 루트에서 실행:
+
+```bash
+cd /path/to/Hailo-H8
+bash setup-env-wsl2.sh
+```
+
+이 스크립트가 시스템 패키지, Python 가상환경(`hailo_env`), 핀 고정된 의존성(onnx==1.16.0, protobuf==3.20.3), Hailo SDK를 자동으로 설치합니다.
+
+> Ubuntu 22.04 네이티브 환경에서는 `bash setup-env-ubuntu2204.sh`를 사용하세요 (두 앱 모두 설치).
+
+---
+
+## 수동 설치
+
+아래는 수동 설치를 위한 상세 가이드입니다.
+
 ## 시스템 요구사항
 
 ### 하드웨어
@@ -67,14 +86,14 @@ sudo apt install -y graphviz graphviz-dev
 ### 1. 가상환경 생성
 
 ```bash
-cd /home/life/Project/Hailo-H8
+cd Hailo-H8
 python3.10 -m venv hailo_env
 ```
 
 ### 2. 가상환경 활성화
 
 ```bash
-source /home/life/Project/Hailo-H8/hailo_env/bin/activate
+source hailo_env/bin/activate
 ```
 
 ### 3. pip 업그레이드
@@ -120,19 +139,19 @@ pip install yolov5
 
 ```bash
 # HailoRT (Python 바인딩)
-pip install /home/life/Project/Hailo-H8/install_sw/hailort-4.23.0-cp310-cp310-linux_x86_64.whl
+pip install install_sw/hailort-4.23.0-cp310-cp310-linux_x86_64.whl
 
 # Hailo Model Zoo
-pip install /home/life/Project/Hailo-H8/install_sw/hailo_model_zoo-2.17.1-py3-none-any.whl
+pip install install_sw/hailo_model_zoo-2.17.1-py3-none-any.whl
 
 # Hailo Dataflow Compiler (HEF 컴파일용)
-pip install /home/life/Project/Hailo-H8/install_sw/hailo_dataflow_compiler-3.33.0-py3-none-linux_x86_64.whl
+pip install install_sw/hailo_dataflow_compiler-3.33.0-py3-none-linux_x86_64.whl
 ```
 
 ### 한 번에 설치 (requirements.txt)
 
 ```bash
-cd /home/life/Project/Hailo-H8/Hailo-Compiler-UI
+cd Hailo-H8/Hailo-Compiler-UI
 pip install -r requirements.txt
 ```
 
@@ -188,8 +207,8 @@ ultralytics>=8.0.0
 ### 환경 체크 스크립트
 
 ```bash
-source /home/life/Project/Hailo-H8/hailo_env/bin/activate
-cd /home/life/Project/Hailo-H8/Hailo-Compiler-UI
+source hailo_env/bin/activate
+cd Hailo-H8/Hailo-Compiler-UI
 
 python -c "
 from src.core.environment import check_environment
@@ -230,10 +249,12 @@ Environment Check:
 
 ```bash
 # Hailo 프로젝트 바로가기
-alias cdHailo="cd /home/life/Project/Hailo-H8"
+# Hailo 프로젝트 경로를 본인 환경에 맞게 수정
+HAILO_DIR="$HOME/Hailo-H8"
+alias cdHailo="cd $HAILO_DIR"
 
 # Hailo Compiler UI 실행
-alias Hailo-CUI="source ~/Project/Hailo-H8/hailo_env/bin/activate && cd ~/Project/Hailo-H8/Hailo-Compiler-UI && python main.py"
+alias Hailo-CUI="source $HAILO_DIR/hailo_env/bin/activate && cd $HAILO_DIR/Hailo-Compiler-UI && python main.py"
 ```
 
 적용:
@@ -307,7 +328,7 @@ cannot connect to X server
 ### 프로젝트 구조
 
 ```
-/home/life/Project/Hailo-H8/
+Hailo-H8/
 ├── hailo_env/              # Python 가상환경
 ├── install_sw/             # Hailo 설치 패키지
 │   ├── hailort-4.23.0-cp310-cp310-linux_x86_64.whl
@@ -321,7 +342,7 @@ cannot connect to X server
 ### 데이터셋 구조 (권장)
 
 ```
-/home/life/Project/Yolov5_datasets/<dataset-name>/
+<datasets-path>/<dataset-name>/
 ├── data.yaml               # 데이터셋 설정
 ├── models/                 # 모델 파일
 │   ├── pt/                 # PyTorch (.pt)

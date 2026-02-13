@@ -18,8 +18,9 @@
 ### 필수 패키지
 
 ```bash
+# 환경 설치 (최초 1회): bash setup-env-wsl2.sh 또는 bash setup-env-ubuntu2204.sh
 # Hailo 가상환경 활성화
-source /path/to/hailo_env/bin/activate
+source /path/to/Hailo-H8/hailo_env/bin/activate
 
 # 확인
 pip list | grep -E "hailo|torch|onnx"

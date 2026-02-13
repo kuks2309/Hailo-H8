@@ -20,7 +20,7 @@ Hailo-8 AI 가속기를 위한 Qt5 기반 GUI 애플리케이션입니다.
 
 ```bash
 # 1. 의존성 설치
-cd /home/life/Project/Hailo-H8/HailoRT-Ui
+cd Hailo-H8/HailoRT-Ui
 pip install -r requirements.txt
 
 # 2. 애플리케이션 실행
