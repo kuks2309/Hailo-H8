@@ -16,6 +16,7 @@ import numpy as np
 
 from utils.logger import setup_logger
 from utils.styles import get_color
+from utils.folder_structure import parse_data_yaml
 
 logger = setup_logger(__name__)
 
@@ -26,13 +27,18 @@ class InferenceWorker(QThread):
     error = pyqtSignal(str)
     stopped = pyqtSignal()
 
-    def __init__(self, model_path: str, source: Union[str, int], conf_threshold: float = 0.5) -> None:
+    def __init__(self, model_path: str, source: Union[str, int], conf_threshold: float = 0.5,
+                 hailo_service=None, class_names=None) -> None:
         super().__init__()
         self.model_path: str = model_path
         self.source: Union[str, int] = source
         self.conf_threshold: float = conf_threshold
         self.running: bool = False
         self.model: Optional[Any] = None
+        self._shared_hailo_service = hailo_service
+        self._class_names = class_names
+
+    IMAGE_EXTENSIONS = {'.jpg', '.jpeg', '.png', '.bmp', '.tif', '.tiff'}
 
     def run(self) -> None:
         """Run inference loop."""
@@ -43,46 +49,11 @@ class InferenceWorker(QThread):
             # Initialize model
             self._load_model()
 
-            # Initialize video capture
-            cap = self._init_capture()
-            if cap is None:
-                logger.error("Failed to open video source")
-                self.error.emit("Failed to open video source")
-                return
-
-            frame_count = 0
-            start_time = time.time()
-            logger.info("Inference loop started")
-
-            while self.running:
-                ret, frame = cap.read()
-                if not ret:
-                    # Loop video or stop
-                    if isinstance(self.source, str) and os.path.isfile(self.source):
-                        cap.set(1, 0)  # cv2.CAP_PROP_POS_FRAMES
-                        continue
-                    else:
-                        break
-
-                # Run inference
-                detections = self._run_inference(frame)
-
-                # Calculate FPS
-                frame_count += 1
-                elapsed = time.time() - start_time
-                fps = frame_count / elapsed if elapsed > 0 else 0
-
-                # Draw results
-                result_frame = self._draw_detections(frame, detections)
-
-                # Emit frame
-                self.frame_ready.emit(result_frame, detections, fps)
-
-                # Small delay to prevent overwhelming the UI
-                time.sleep(0.001)
-
-            cap.release()
-            logger.info(f"Inference loop stopped after {frame_count} frames")
+            # Check if source is a folder
+            if isinstance(self.source, str) and os.path.isdir(self.source):
+                self._run_folder_inference()
+            else:
+                self._run_video_inference()
 
         except ImportError as e:
             logger.error(f"Import error in inference worker: {e}", exc_info=True)
@@ -91,11 +62,87 @@ class InferenceWorker(QThread):
             logger.error(f"Runtime error in inference worker: {e}", exc_info=True)
             self.error.emit(f"Runtime error: {e}")
         except Exception as e:
-            # Fallback for unexpected errors
             logger.error(f"Unexpected error in inference worker ({type(e).__name__}): {e}", exc_info=True)
             self.error.emit(f"Unexpected error ({type(e).__name__}): {e}")
         finally:
             self.stopped.emit()
+
+    def _run_folder_inference(self) -> None:
+        """Run inference on all images in a folder."""
+        import cv2
+
+        image_files = sorted(
+            f for f in os.listdir(self.source)
+            if os.path.splitext(f)[1].lower() in self.IMAGE_EXTENSIONS
+        )
+
+        if not image_files:
+            self.error.emit(f"No image files found in: {self.source}")
+            return
+
+        logger.info(f"Folder inference: {len(image_files)} images in {self.source}")
+
+        frame_count = 0
+        start_time = time.time()
+
+        for filename in image_files:
+            if not self.running:
+                break
+
+            filepath = os.path.join(self.source, filename)
+            frame = cv2.imread(filepath)
+            if frame is None:
+                logger.warning(f"Failed to read image: {filename}")
+                continue
+
+            detections = self._run_inference(frame)
+
+            frame_count += 1
+            elapsed = time.time() - start_time
+            fps = frame_count / elapsed if elapsed > 0 else 0
+
+            result_frame = self._draw_detections(frame, detections)
+            self.frame_ready.emit(result_frame, detections, fps)
+
+            # Delay between images for UI viewing
+            time.sleep(0.5)
+
+        logger.info(f"Folder inference completed: {frame_count}/{len(image_files)} images")
+
+    def _run_video_inference(self) -> None:
+        """Run inference on video/camera source."""
+        cap = self._init_capture()
+        if cap is None:
+            logger.error("Failed to open video source")
+            self.error.emit("Failed to open video source")
+            return
+
+        frame_count = 0
+        start_time = time.time()
+        logger.info("Video inference loop started")
+
+        while self.running:
+            ret, frame = cap.read()
+            if not ret:
+                if isinstance(self.source, str) and os.path.isfile(self.source):
+                    cap.set(1, 0)  # cv2.CAP_PROP_POS_FRAMES
+                    continue
+                else:
+                    break
+
+            detections = self._run_inference(frame)
+
+            frame_count += 1
+            elapsed = time.time() - start_time
+            fps = frame_count / elapsed if elapsed > 0 else 0
+
+            result_frame = self._draw_detections(frame, detections)
+            self.frame_ready.emit(result_frame, detections, fps)
+
+            time.sleep(0.001)
+
+        cap.release()
+        logger.info(f"Video inference stopped after {frame_count} frames")
 
     def stop(self) -> None:
         """Stop inference loop."""
@@ -105,13 +152,27 @@ class InferenceWorker(QThread):
     def _load_model(self) -> None:
         """Load the model."""
         try:
-            # Try HailoRT first
             logger.debug(f"Loading model: {self.model_path}")
-            from services.hailo_service import HailoService
-            self.hailo = HailoService()
-            self.model = self.hailo.load_model(self.model_path)
-            self.use_hailo = True
-            logger.info(f"Model loaded successfully via HailoService: {os.path.basename(self.model_path)}")
+            if self._shared_hailo_service and self._shared_hailo_service.device:
+                # Use shared device connection from Device tab
+                self.hailo = self._shared_hailo_service
+                self.model = self.hailo.load_model(self.model_path)
+                self.use_hailo = True
+                logger.info(f"Model loaded via shared device: {os.path.basename(self.model_path)}")
+            else:
+                # Try creating new connection
+                from services.hailo_service import HailoService
+                self.hailo = HailoService()
+                device = self.hailo.connect()
+                if device:
+                    self.model = self.hailo.load_model(self.model_path)
+                    self.use_hailo = True
+                    logger.info(f"Model loaded via new connection: {os.path.basename(self.model_path)}")
+                else:
+                    raise RuntimeError("No Hailo device available. Please connect device first.")
+            # Set custom class names from project data.yaml
+            if self.use_hailo and self._class_names:
+                self.hailo.set_class_names(self._class_names)
         except ImportError:
             # Fallback to mock inference
             logger.warning("HailoRT not available, using mock inference mode")
@@ -176,29 +237,56 @@ class InferenceWorker(QThread):
 
         return detections
 
+    # Per-class color palette (BGR)
+    CLASS_COLORS = [
+        (0, 255, 0), (255, 0, 0), (0, 0, 255), (0, 255, 255),
+        (255, 0, 255), (255, 255, 0), (0, 128, 255), (255, 128, 0),
+        (128, 0, 255), (0, 255, 128), (255, 0, 128), (128, 255, 0),
+    ]
+
     def _draw_detections(self, frame: np.ndarray, detections: List[Dict[str, Any]]) -> np.ndarray:
-        """Draw detection boxes on frame."""
+        """Draw detection boxes or segmentation masks on frame."""
         try:
             import cv2
         except ImportError:
             return frame
 
         result = frame.copy()
+        fh, fw = result.shape[:2]
 
         for det in detections:
             bbox = det['bbox']
             conf = det['confidence']
             cls = det['class']
+            class_id = det.get('class_id', 0)
+            color = self.CLASS_COLORS[class_id % len(self.CLASS_COLORS)]
 
             x1, y1, x2, y2 = map(int, bbox)
 
-            # Draw box
-            cv2.rectangle(result, (x1, y1), (x2, y2), (0, 255, 0), 2)
+            if 'mask' in det:
+                # Segmentation: draw semi-transparent mask overlay
+                mask = det['mask']
+                mask_resized = cv2.resize(mask, (fw, fh), interpolation=cv2.INTER_LINEAR)
+                mask_bool = mask_resized > 0.5
+
+                # Colored overlay with transparency
+                overlay = result.copy()
+                overlay[mask_bool] = color
+                cv2.addWeighted(overlay, 0.45, result, 0.55, 0, result)
+
+                # Draw contour border
+                contours, _ = cv2.findContours(
+                    (mask_bool.astype(np.uint8) * 255), cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE
+                )
+                cv2.drawContours(result, contours, -1, color, 2)
+            else:
+                # Detection: draw bounding box
+                cv2.rectangle(result, (x1, y1), (x2, y2), color, 2)
 
             # Draw label
             label = f"{cls}: {conf:.2f}"
-            (w, h), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
-            cv2.rectangle(result, (x1, y1 - 20), (x1 + w, y1), (0, 255, 0), -1)
+            (tw, th), _ = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.5, 1)
+            cv2.rectangle(result, (x1, y1 - 20), (x1 + tw, y1), color, -1)
             cv2.putText(result, label, (x1, y1 - 5),
                        cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 0, 0), 1)
 
@@ -208,9 +296,10 @@ class InferenceWorker(QThread):
 class InferenceTabController:
     """Controller for inference tab."""
 
-    def __init__(self, tab_widget: QWidget, base_path: str) -> None:
+    def __init__(self, tab_widget: QWidget, base_path: str, device_controller=None) -> None:
         self.tab: QWidget = tab_widget
         self.base_path: str = base_path
+        self.device_controller = device_controller
         self.worker: Optional[InferenceWorker] = None
         self.model_loaded: bool = False
         self.frame_count: int = 0
@@ -234,12 +323,37 @@ class InferenceTabController:
         # Source type change
         self.tab.comboSource.currentIndexChanged.connect(self._on_source_type_changed)
 
+    def set_project_info(self, info: dict) -> None:
+        """Apply project info from Project tab."""
+        self._project_info = info
+        if not info.get('valid'):
+            return
+
+        # Store class names from project
+        self._class_names = info.get('class_names')
+
+        # Auto-fill HEF path from detected files
+        hef_files = info.get('hef_files', [])
+        if hef_files and not self.tab.editHefPath.text():
+            best_hef = next(
+                (f for f in hef_files if 'best' in os.path.basename(f).lower()),
+                hef_files[0]
+            )
+            self.tab.editHefPath.setText(best_hef)
+            logger.info(f"[Auto] HEF model: {os.path.basename(best_hef)}")
+            # Auto-load the model
+            self.load_model()
+
     def _browse_hef(self) -> None:
         """Browse for HEF model file."""
+        if hasattr(self, '_project_info') and self._project_info and self._project_info.get('hef_dir'):
+            start_dir = self._project_info['hef_dir']
+        else:
+            start_dir = os.path.join(self.base_path, 'data', 'models', 'hef')
         path, _ = QFileDialog.getOpenFileName(
             self.tab,
             "Select HEF Model",
-            os.path.join(self.base_path, 'data', 'models', 'hef'),
+            start_dir,
             "Hailo Models (*.hef);;All Files (*)"
         )
         if path:
@@ -265,10 +379,16 @@ class InferenceTabController:
                 "Image Files (*.jpg *.jpeg *.png *.bmp);;All Files (*)"
             )
         elif source_type == "Image Folder":
+            # Default to project's test/images if available
+            start_dir = os.path.join(self.base_path, 'data', 'input', 'images')
+            if hasattr(self, '_project_info') and self._project_info and self._project_info.get('valid'):
+                test_images = os.path.join(self._project_info['base'], 'test', 'images')
+                if os.path.isdir(test_images):
+                    start_dir = test_images
             path = QFileDialog.getExistingDirectory(
                 self.tab,
                 "Select Image Folder",
-                os.path.join(self.base_path, 'data', 'input', 'images')
+                start_dir
             )
         else:
             return
@@ -349,8 +469,19 @@ class InferenceTabController:
         self.frame_count = 0
         self._update_ui_running(True)
 
-        # Create and start worker
-        self.worker = InferenceWorker(self.hef_path, source)
+        # Create and start worker (pass shared device if available)
+        hailo_svc = None
+        if self.device_controller and hasattr(self.device_controller, 'hailo_service'):
+            hailo_svc = self.device_controller.hailo_service
+        class_names = getattr(self, '_class_names', None)
+        if not class_names and hasattr(self, '_project_info') and self._project_info:
+            class_names = self._project_info.get('class_names')
+        # Auto-detect class names from data.yaml near the HEF file
+        if not class_names:
+            class_names = self._find_class_names_from_hef(self.hef_path)
+        self.worker = InferenceWorker(
+            self.hef_path, source, hailo_service=hailo_svc, class_names=class_names
+        )
         self.worker.frame_ready.connect(self._on_frame_ready)
         self.worker.error.connect(self._on_error)
         self.worker.stopped.connect(self._on_stopped)
@@ -449,6 +580,28 @@ class InferenceTabController:
         self.tab.btnStart.setEnabled(not running)
         self.tab.btnStop.setEnabled(running)
         self.tab.btnLoadModel.setEnabled(not running)
+
+    def _find_class_names_from_hef(self, hef_path: str) -> Optional[List[str]]:
+        """Auto-detect class names by searching for data.yaml near the HEF file.
+
+        Walks up from the HEF directory to find a data.yaml file within
+        the project structure (e.g., .../forklift/models/hef/best.hef
+        -> finds .../forklift/data.yaml).
+        """
+        current = os.path.dirname(os.path.abspath(hef_path))
+        # Walk up at most 5 levels to find data.yaml
+        for _ in range(5):
+            data_config = parse_data_yaml(current)
+            if data_config:
+                names = data_config.get('names')
+                if names:
+                    logger.info(f"Auto-detected {len(names)} class names from {os.path.join(current, 'data.yaml')}")
+                    return names
+            parent = os.path.dirname(current)
+            if parent == current:
+                break
+            current = parent
+        return None
 
     def _capture_frame(self) -> None:
         """Capture current frame."""

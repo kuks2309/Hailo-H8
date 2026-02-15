@@ -1286,3 +1286,773 @@ def collect_logs():
 - `logger.py`의 `log_dir` 파라미터로 앱 자체 로그도 `logs/`에 저장 가능
 
 **심각도:** Minor
+
+---
+
+## 2026-02-14
+
+### Issue #19: Project 탭 신규 추가 - 데이터셋 폴더 자동 감지 및 탭 간 연동 (ENHANCEMENT - RESOLVED)
+
+**요청:** Hailo-Compiler-UI에는 데이터 폴더 선택 시 경로 자동 설정 기능이 있는데 HailoRT-Ui에는 없음
+
+**1차 시도:** Convert 탭에 Data Folder UI 인라인 추가
+- 결과: 탭이 과밀해짐 → 사용자 피드백으로 철회
+
+**2차 구현 (최종):** 별도 "Project" 탭 생성 + Signal 기반 탭 간 연동
+
+**구현 내용:**
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/utils/folder_structure.py` | 신규 - 데이터셋 폴더 구조 감지 유틸리티 |
+| `HailoRT-Ui/ui/tabs/project_tab.ui` | 신규 - Project 탭 UI (폴더 선택, 트리뷰, 감지 정보, 자동 경로) |
+| `HailoRT-Ui/src/views/project_tab.py` | 신규 - Project 탭 컨트롤러 (`project_changed` pyqtSignal) |
+| `HailoRT-Ui/ui/main_window.ui` | 수정 - `tab_project` 첫 번째 탭으로 추가 |
+| `HailoRT-Ui/src/app.py` | 수정 - ProjectTabController 초기화 및 `_on_project_changed()` 라우팅 |
+| `HailoRT-Ui/src/views/convert_tab.py` | 수정 - `set_project_info()` 공개 API 추가, 인라인 Data Folder 코드 제거 |
+| `HailoRT-Ui/src/views/inference_tab.py` | 수정 - `set_project_info()` 추가 (HEF 경로 자동 설정) |
+
+**Signal 아키텍처:**
+```
+Project Tab (project_changed signal)
+  → app.py (_on_project_changed)
+    → convert_controller.set_project_info(info)
+    → inference_controller.set_project_info(info)
+```
+
+**자동 감지 항목:**
+- 클래스 수/이름 (data.yaml 파싱)
+- Calibration 폴더 (train/images → valid/images → test/images 우선순위)
+- PT 모델 파일
+- ONNX/HAR/HEF 출력 디렉토리
+
+**교훈:**
+1. UI가 복잡해지면 별도 탭으로 분리하는 것이 사용자 경험에 유리
+2. pyqtSignal을 사용한 탭 간 통신이 깔끔함 (직접 참조 없이 느슨한 결합)
+
+**심각도:** Enhancement
+
+---
+
+### Issue #20: Hailo Python 패키지 가상환경 미설치 (MAJOR - RESOLVED)
+
+**문제:** `hailomz CLI not found, using SDK compilation` 메시지 발생
+
+**원인 분석:**
+- 시스템 패키지(`hailort` 4.23.0, `hailort-pcie-driver` 4.23.0)는 dpkg로 설치됨
+- Python 가상환경(`hailo_env`)에 Hailo Python 패키지 미설치
+- `converter_service.py:665-677`에서 `hailomz` CLI 존재 확인 후 SDK fallback
+
+**해결:**
+```bash
+source hailo_env/bin/activate
+pip install install_sw/hailort-4.23.0-cp310-cp310-linux_x86_64.whl
+pip install install_sw/hailo_dataflow_compiler-3.33.0-py3-none-linux_x86_64.whl
+pip install install_sw/hailo_model_zoo-2.17.1-py3-none-any.whl
+```
+
+**설치 결과:**
+
+| 패키지 | 버전 | 상태 |
+|--------|------|------|
+| hailort | 4.23.0 | OK |
+| hailo_dataflow_compiler | 3.33.0 | OK |
+| hailo_model_zoo | 2.17.1 | OK |
+| hailomz CLI | - | OK (`hailo_env/bin/hailomz`) |
+
+**부수 이슈:** Pillow 버전 충돌 경고 (`hailo_model_zoo`가 9.3.0 요구, `pi-heif`가 11.1+ 요구) - HailoRT 기능에 영향 없음
+
+**심각도:** Major
+
+---
+
+### Issue #21: VIRTUAL_ENV=/usr 환경변수 문제 (MAJOR - RESOLVED)
+
+**문제:** `hailo_sdk_client` import 시 권한 오류
+```
+PermissionError: [Errno 13] Permission denied: '/usr/etc'
+```
+
+**원인 분석:**
+- 시스템 환경에 `VIRTUAL_ENV=/usr`가 설정되어 있음 (출처 불명)
+- Hailo SDK의 `logger.py`에서 로그 디렉토리 경로 계산:
+  ```python
+  DFC_FOLDER = "etc/hailo/dfc/"
+  DFC_FOLDER_PATH = os.path.join(os.environ.get("VIRTUAL_ENV", "$HOME/.hailo"), DFC_FOLDER)
+  # VIRTUAL_ENV=/usr → /usr/etc/hailo/dfc/ → 권한 오류
+  ```
+- `.bashrc`, `.profile`, `/etc/environment` 등에서 설정 원인 찾지 못함
+
+**해결:** venv를 `source hailo_env/bin/activate`로 활성화하면 `VIRTUAL_ENV`가 올바른 경로로 설정됨
+
+**추가 경고:** `CC`/`CXX` 환경변수가 ccache로 설정 → `unset CC CXX` 필요
+
+**교훈:**
+- venv의 python을 직접 실행(`hailo_env/bin/python3`)하면 `VIRTUAL_ENV`가 설정되지 않음
+- 반드시 `source activate`로 활성화 후 실행해야 Hailo SDK 정상 동작
+
+**심각도:** Major
+
+---
+
+### Issue #22: 설치 스크립트에 Google Drive 자동 다운로드 추가 (ENHANCEMENT - RESOLVED)
+
+**요청:** `install_sw/` 폴더가 없을 때 Google Drive에서 자동 다운로드
+
+**구현 내용:**
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `setup-env-ubuntu2204.sh` | STEP 6에 `install_sw/` 확인 + Google Drive 다운로드 로직 추가 |
+| `setup-env-wsl2.sh` | 동일한 다운로드 로직 추가 |
+
+**기능:**
+1. `_count_hailo_wheels()` 함수로 필수 `.whl` 파일 3개 존재 여부 확인
+2. 누락 시 사용자에게 선택지 제공:
+   - 1) `gdown`으로 Google Drive 폴더 자동 다운로드
+   - 2) Skip (수동 다운로드 URL 안내)
+3. 다운로드 후 후처리:
+   - `find -mindepth 2`로 하위 폴더의 `.whl`/`.deb` 파일을 루트로 이동
+   - `Zone.Identifier` 파일 삭제 (Windows NTFS 아티팩트)
+   - `.msi` 파일 삭제 (Linux에서 불필요)
+   - 빈 디렉토리 삭제
+
+**Google Drive URL:** `https://drive.google.com/drive/folders/1pAv-qojczbuIskbWu0W_0sac6LhJRF66`
+
+**테스트 결과 (실제 다운로드 검증):**
+
+| 항목 | 결과 |
+|------|------|
+| `gdown` 설치 | OK |
+| 폴더 다운로드 (8개 파일, ~570MB) | OK |
+| 하위 폴더 → 루트 이동 | OK (`ubuntu/install_sw/` → `install_sw/`) |
+| `Zone.Identifier` 정리 (8개) | OK |
+| `.msi` 정리 (2개) | OK |
+| 빈 폴더 정리 | OK |
+| 최종 파일 확인 (`.whl` 3개 + `.deb` 4개) | OK |
+
+**gdown 동작 특성 (테스트에서 발견):**
+1. Google Drive 폴더 구조를 그대로 유지 → `install_sw/ubuntu/install_sw/`에 파일 생성
+2. Windows `Zone.Identifier` 파일도 같이 다운로드
+3. `window/` 하위 폴더의 `.msi` 파일도 다운로드
+
+**교훈:**
+1. **스크립트 작성 후 반드시 실제 테스트 필수** - `bash -n` 문법 검증만으로는 부족
+2. `gdown --folder`의 폴더 구조 보존 동작은 문서에 명확하지 않아 테스트 없이는 발견 불가
+3. 후처리 로직의 첫 버전(`for SUBFOLDER` 루프)은 중첩 구조를 제대로 처리 못함 → `find -mindepth 2`로 수정
+
+**심각도:** Enhancement
+
+---
+
+## 2026-02-15
+
+### Issue #23: HailoRT 4.23 Python API 변경 - Device 정보 조회 실패 (CRITICAL - RESOLVED)
+
+**문제:** HailoRT 4.12 API로 작성된 device_tab.py가 4.23에서 동작하지 않음
+```
+AttributeError: 'VDevice' object has no attribute 'get_serial_number'
+AttributeError: 'VDevice' object has no attribute 'get_fw_version'
+```
+
+**원인 분석:**
+- HailoRT 4.23에서 Device API가 대폭 변경됨
+- `VDevice`에 직접 접근 메서드가 제거되고, `physical_device.control` 경유로 변경
+
+**HailoRT 4.12 vs 4.23 API 비교:**
+
+| 기능 | 4.12 API | 4.23 API |
+|------|----------|----------|
+| 보드 정보 | `device.get_board_info()` | `physical_device.control.identify()` → `BoardInformation` |
+| 시리얼 | `device.get_serial_number()` | `board_info.serial_number` (null strip 필요) |
+| FW 버전 | `device.get_fw_version()` | `str(board_info.firmware_version)` (HailoFirmwareVersion obj) |
+| 아키텍처 | `device.get_architecture()` | `board_info.device_architecture` |
+| 온도 | `device.get_chip_temperature()` → float | `ctrl.get_chip_temperature()` → `TemperatureInfo` (`.ts0_temperature`, `.ts1_temperature`) |
+| 전력 | `device.get_power_measurement()` → float | `ctrl.get_power_measurement()` → `PowerMeasurementData` (`.average_value`) |
+
+**해결 방법:**
+
+```python
+# VDevice → physical device → control
+vdevice = VDevice()
+physical_devices = vdevice.get_physical_devices()
+physical_device = physical_devices[0]
+ctrl = physical_device.control
+
+# Board info
+board_info = ctrl.identify()
+board_name = str(board_info.board_name).replace('\x00', '').strip()
+serial = str(board_info.serial_number).replace('\x00', '').strip()
+fw_version = str(board_info.firmware_version).replace('\x00', '').strip()
+
+# Temperature
+temp_info = ctrl.get_chip_temperature()
+temp = temp_info.ts0_temperature  # float, °C
+
+# Power (일부 보드에서 미지원)
+try:
+    power_info = ctrl.get_power_measurement()
+    power = power_info.average_value
+except Exception:
+    power = None  # M.2 보드 등에서 미지원
+```
+
+**주의사항:**
+- C-style 문자열에 null 바이트 패딩 → `.replace('\x00', '').strip()` 필수
+- `get_power_measurement()`는 일부 보드(M.2 등)에서 지원 안 됨
+- USB/LAN 인터페이스 모델은 HailoRT 4.12만 지원
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | 4.23 API로 전면 재작성 |
+| `HailoRT-Ui/src/views/device_tab.py` | 새 API 반환값 처리 |
+
+**심각도:** Critical
+
+---
+
+### Issue #24: Inference "Device not connected" 오류 (CRITICAL - RESOLVED)
+
+**문제:** Inference 탭에서 Start 클릭 시 항상 "No Hailo device available" 오류
+
+**원인 분석:**
+- `InferenceWorker`가 자체적으로 `HailoService()`를 새로 생성
+- Device 탭에서 이미 연결된 디바이스를 공유하지 않음
+- Hailo-8은 동시에 하나의 VDevice만 허용 → 중복 연결 실패
+
+**해결 방법:**
+- `InferenceTabController`에 `device_controller` 참조 전달
+- `InferenceWorker.__init__`에 `hailo_service` 파라미터 추가
+- Device 탭에서 연결된 HailoService 인스턴스를 공유
+
+```python
+# app.py - device_controller 공유
+self.inference_controller = InferenceTabController(
+    self.tab_inference, self.base_path,
+    device_controller=self.device_controller
+)
+
+# inference_tab.py - 공유 서비스 사용
+hailo_svc = None
+if self.device_controller and hasattr(self.device_controller, 'hailo_service'):
+    hailo_svc = self.device_controller.hailo_service
+
+self.worker = InferenceWorker(
+    self.hef_path, source, hailo_service=hailo_svc, class_names=class_names
+)
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/app.py` | `device_controller`를 inference/monitor에 전달 |
+| `HailoRT-Ui/src/views/inference_tab.py` | `hailo_service` 공유 로직 추가 |
+
+**심각도:** Critical
+
+---
+
+### Issue #25: Inference 입력 크기 불일치 - Expected 1228800, got 5760 (CRITICAL - RESOLVED)
+
+**문제:** 추론 실행 시 입력 데이터 크기 오류
+```
+Expected input size 1228800, got 5760
+```
+
+**원인 분석:**
+- `_preprocess()`에서 `cv2.resize(frame, (input_shape[2], input_shape[1]))` 사용
+- `input_shape = (640, 640, 3)` (NHWC) 일 때 `(input_shape[2], input_shape[1])` = `(3, 640)`
+- 640×3×3 = 5760 bytes (잘못된 크기)
+- 기대값: 640×640×3 = 1,228,800 bytes
+
+**해결:**
+```python
+# Before (잘못됨)
+resized = cv2.resize(frame, (input_shape[2], input_shape[1]))
+
+# After (올바름)
+target_h, target_w = input_shape[0], input_shape[1]  # (640, 640)
+resized = cv2.resize(frame, (target_w, target_h))
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | `_preprocess()` resize 인자 순서 수정 |
+
+**심각도:** Critical
+
+---
+
+### Issue #26: float32 vs uint8 dtype 불일치 (MAJOR - RESOLVED)
+
+**문제:** HailoRT가 uint8 입력을 기대하는데 float32 데이터 전송
+
+**원인 분석:**
+- `_preprocess()`에서 `normalized = resized.astype(np.float32) / 255.0` 수행
+- HailoRT는 내부적으로 양자화를 처리하므로 uint8 그대로 전달해야 함
+
+**해결:**
+```python
+# Before (잘못됨)
+normalized = resized.astype(np.float32) / 255.0
+
+# After (올바름) - uint8 유지, HailoRT가 내부적으로 양자화 처리
+# resized는 이미 uint8, 변환 불필요
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | `_preprocess()` - float32 정규화 제거, uint8 유지 |
+
+**심각도:** Major
+
+---
+
+### Issue #27: HAILO_NETWORK_GROUP_NOT_ACTIVATED 오류 (CRITICAL - RESOLVED)
+
+**문제:** `InferVStreams` 실행 시 네트워크 그룹 활성화 오류
+```
+HAILO_NETWORK_GROUP_NOT_ACTIVATED
+```
+
+**원인 분석:**
+- HailoRT 4.23에서는 `InferVStreams` 사용 전에 network group을 명시적으로 활성화해야 함
+- 이전 버전에서는 자동 활성화되었으나 4.23에서 변경됨
+
+**해결:**
+```python
+# Before (4.12 방식)
+with InferVStreams(self.network_group, input_data) as pipeline:
+    results = pipeline.infer(input_data)
+
+# After (4.23 방식) - 명시적 활성화 필요
+with self.network_group.activate():
+    with InferVStreams(self.network_group, input_data) as pipeline:
+        results = pipeline.infer(input_data)
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | `infer()` - `network_group.activate()` 컨텍스트 매니저 추가 |
+
+**심각도:** Critical
+
+---
+
+### Issue #28: quantized=False 출력이 여전히 uint8 반환 (MAJOR - RESOLVED)
+
+**문제:** `InferVStreams`에 `quantized=False` 설정해도 출력이 float32로 역양자화되지 않음
+
+**원인 분석:**
+- HailoRT 4.23의 버그 또는 동작 변경
+- `output_params`에 `quantized=False` 설정해도 uint8 그대로 반환
+
+**해결 방법 - 수동 역양자화:**
+```python
+# vstream_info에서 양자화 파라미터 추출
+for vstream_info in self.network_group.get_output_vstream_infos():
+    qp = vstream_info.quant_info
+    self._output_quant_params[vstream_info.name] = {
+        'zp': qp.qp_zp,       # zero point
+        'scale': qp.qp_scale,  # scale factor
+    }
+
+# 수동 역양자화: float_value = (uint8_value - zero_point) * scale
+def _dequantize(self, name, data):
+    qp = self._output_quant_params.get(name)
+    if qp:
+        return (data.astype(np.float32) - qp['zp']) * qp['scale']
+    return data.astype(np.float32)
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | `_output_quant_params` 저장, `_dequantize()` 함수 추가 |
+
+**심각도:** Major
+
+---
+
+### Issue #29: YOLOv8 DFL 디코딩 - 18개 Raw 출력 레이어 처리 (CRITICAL - RESOLVED)
+
+**문제:** Forklift 모델(YOLOv8 custom, nc=1)이 NMS 없이 18개 raw 출력 레이어를 반환하여 탐지 결과가 비어있음
+
+**원인 분석:**
+- Hailo 컴파일러가 Conv 레이어를 분할하여 18개 출력 생성
+- 각 스케일(80×80, 40×40, 20×20)별로 6개 출력:
+  - 3×64ch: bbox 중간값 + DFL 최종 출력
+  - 2×128ch: cls 중간값
+  - 1×nc(1)ch: cls 최종 출력
+- NMS가 포함되지 않아 수동 DFL 디코딩 필요
+
+**YOLOv8 DFL 출력 구조 분석:**
+
+| 출력 | Shape | 채널 | 역할 |
+|------|-------|------|------|
+| conv37 (80×80) | 80×80×64 | 64 | bbox 중간값 |
+| conv38 (80×80) | 80×80×128 | 128 | cls 중간값 |
+| conv39 (80×80) | 80×80×64 | 64 | bbox 중간값 |
+| conv40 (80×80) | 80×80×128 | 128 | cls 중간값 |
+| **conv41** (80×80) | 80×80×64 | 64 | **bbox DFL 최종** (가장 높은 conv#) |
+| **conv42** (80×80) | 80×80×1 | 1 | **cls 최종** (nc=1) |
+| (40×40, 20×20도 동일 패턴) | | | |
+
+**핵심 식별 규칙:**
+- 같은 스케일에서 **가장 높은 conv 번호** + **64ch** = bbox DFL 출력
+- 같은 스케일에서 **가장 작은 채널 수** (= nc) = cls 출력
+
+**DFL 디코딩 알고리즘:**
+```python
+# reg_max = 15 (NOT 16), 4 * (15+1) = 64 channels
+reg_max = 15
+
+# 1. bbox DFL: (H, W, 64) → reshape (H*W, 4, reg_max+1)
+bbox_raw = dequantized_bbox.reshape(-1, 4, reg_max + 1)
+
+# 2. Softmax → weighted sum (Distribution Focal Loss)
+bbox_dfl = softmax(bbox_raw, axis=-1)
+weights = np.arange(reg_max + 1, dtype=np.float32)
+bbox_dist = np.sum(bbox_dfl * weights, axis=-1)  # (H*W, 4)
+
+# 3. dist2bbox: grid offset → xyxy
+grid_y, grid_x = np.meshgrid(np.arange(H), np.arange(W), indexing='ij')
+grid = np.stack([grid_x, grid_y], axis=-1).reshape(-1, 2)
+stride = input_size / H  # 8, 16, 32
+
+x1 = (grid[:, 0] - bbox_dist[:, 0]) * stride
+y1 = (grid[:, 1] - bbox_dist[:, 1]) * stride
+x2 = (grid[:, 0] + bbox_dist[:, 2]) * stride
+y2 = (grid[:, 1] + bbox_dist[:, 3]) * stride
+
+# 4. cls sigmoid → NMS
+cls_scores = sigmoid(dequantized_cls).reshape(-1, nc)
+```
+
+**구현된 핵심 함수들:**
+
+| 함수 | 설명 |
+|------|------|
+| `_analyze_outputs()` | 18개 출력을 스케일별로 그룹핑, bbox/cls 자동 식별 |
+| `_dequantize()` | uint8 → float32 수동 역양자화 |
+| `_postprocess_yolov8_dfl()` | DFL softmax → weighted sum → grid offset → NMS |
+| `set_class_names()` | data.yaml 클래스 이름 설정 |
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | 전면 재작성 - DFL 디코딩 파이프라인 |
+| `HailoRT-Ui/src/views/inference_tab.py` | `class_names` 전달 로직 추가 |
+
+**테스트 결과:**
+- 모델: Forklift YOLOv8 custom (nc=1, palette_green)
+- 입력: 640×640×3 uint8
+- 출력: 18개 레이어 → 3 스케일 DFL 디코딩
+- 결과: 5/5 테스트 이미지에서 palette_green 탐지 성공 (confidence 0.96)
+
+**심각도:** Critical
+
+---
+
+### Issue #30: data.yaml 클래스 이름 연동 (ENHANCEMENT - RESOLVED)
+
+**문제:** Inference 결과에서 클래스 이름 대신 숫자 ID만 표시
+
+**해결 방법:**
+- Project 탭에서 감지한 `class_names`를 Inference 탭으로 전달
+- `HailoService.set_class_names()` 메서드 추가
+- `InferenceWorker`에 `class_names` 파라미터 추가
+
+**Signal 흐름:**
+```
+Project Tab (project_changed: {class_names: ['palette_green']})
+  → app.py (_on_project_changed)
+    → inference_controller.set_project_info(info)
+      → self._project_info = info
+
+Start Inference:
+  → class_names = self._project_info.get('class_names')
+  → InferenceWorker(... class_names=class_names)
+    → hailo.set_class_names(class_names)
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/services/hailo_service.py` | `set_class_names()` 메서드 추가 |
+| `HailoRT-Ui/src/views/inference_tab.py` | `class_names` 전달 로직 추가 |
+
+**심각도:** Enhancement
+
+---
+
+### Issue #31: QGroupBox 캡션 텍스트 안 보임 (MAJOR - RESOLVED)
+
+**문제:** 모든 탭의 QGroupBox 제목(캡션)이 보이지 않거나 잘림
+
+**원인 분석:**
+
+| 원인 | 상세 |
+|------|------|
+| `margin-top: 20px` 부족 | 13pt(≈17px) + `top: 4px` = 21px > 20px 마진 → 클리핑 |
+| `font-weight: bold; font-size: 13pt` 위치 | QGroupBox 자체에 설정 → 내부 모든 위젯에도 적용 |
+| `QFrame` 범용 스타일 | 모든 QFrame 파생 위젯에 border 적용 → QGroupBox 렌더링 간섭 |
+
+**해결:**
+
+```css
+/* Before */
+QGroupBox {
+    margin-top: 20px;       /* 부족 */
+    font-weight: bold;      /* 자식에도 적용됨 */
+    font-size: 13pt;        /* 자식에도 적용됨 */
+}
+QGroupBox::title {
+    top: 4px;               /* 마진 초과 가능 */
+}
+QFrame {                    /* 모든 QFrame에 적용 - 간섭 */
+    border: 1px solid #ccc;
+}
+
+/* After */
+QGroupBox {
+    margin-top: 30px;       /* 충분한 공간 */
+}
+QGroupBox::title {
+    top: 8px;               /* 적절한 위치 */
+    font-weight: bold;      /* 타이틀에만 적용 */
+    font-size: 13pt;        /* 타이틀에만 적용 */
+    padding: 2px 10px;      /* 여유 패딩 */
+}
+/* QFrame 범용 규칙 제거 → QTableWidget, QTreeWidget 개별 스타일 */
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/utils/styles.py` | QGroupBox margin/title 수정, QFrame 범용 규칙 제거, QTableWidget/QTreeWidget/QHeaderView 개별 스타일 추가 |
+
+**테스트 결과:** 5개 탭 모두 QGroupBox 캡션 정상 표시 확인 (스크린샷 검증)
+
+**심각도:** Major
+
+---
+
+### Issue #32: About 다이얼로그 저작자 및 라이센스 표기 (ENHANCEMENT - RESOLVED)
+
+**요청:** About 다이얼로그에 저작자 정보와 라이센스 표기 추가
+
+**구현 내용:**
+
+About 다이얼로그에 추가된 정보:
+- **Author:** Prof. Kuk Won Ko with Claude Code
+- **License:** Free for personal and non-commercial use. Commercial and enterprise use requires a paid license.
+
+LICENSE 파일 신규 생성 (듀얼 라이센스):
+1. **개인/비상업용:** 무료 (교육, 개인, 비영리 목적)
+2. **상업/기업용:** 유료 라이센스 필요 (연락처: kuksauto@hanmail.net)
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/app.py` | `_show_about()` - Author, License 정보 추가 |
+| `LICENSE` | 신규 - 듀얼 라이센스 (개인 무료 / 기업 유료) |
+
+**심각도:** Enhancement
+
+---
+
+### Issue #33: Project 탭 - 최근 폴더 5개 기억 및 전체 디렉토리 트리 표시 (ENHANCEMENT - RESOLVED)
+
+**요청:**
+1. 폴더가 최근 폴더 5개를 기억하고 선택할 수 있도록
+2. 폴더를 열면 트리 전체 구조가 보이도록
+
+**구현 내용:**
+
+**1) 최근 폴더 기능:**
+- `QLineEdit` → `QComboBox` (editable) 교체
+- `recent_folders.json`에 최근 5개 폴더 JSON 저장/로드
+- 드롭다운 선택 시 즉시 해당 폴더 감지 실행
+- 새 폴더 선택 시 리스트 맨 위에 추가 (중복 제거)
+
+**2) 전체 디렉토리 트리:**
+- 기존: 미리 정의된 구조만 표시 (data.yaml, train/, models/ 등)
+- 변경: `os.listdir()` 재귀 탐색으로 실제 파일시스템 전체 표시
+- 폴더는 "N items" 상태 표시, 파일은 크기(KB/MB/GB) 표시
+- 데이터셋 관련 항목 색상 구분:
+  - 데이터셋 폴더 (train, models 등): 파랑
+  - PT 모델: 보라
+  - ONNX: 파랑
+  - HAR/HEF: 주황
+  - data.yaml: 초록
+- 상위 2단계 자동 펼침, 최대 4단계까지 탐색
+- 숨김 파일/`__pycache__` 자동 제외
+
+**3) File 메뉴 변경:**
+- `Open` → `Open Folder` (Ctrl+O)
+- 클릭 시 Project 탭으로 자동 전환 + 폴더 선택 다이얼로그
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/ui/tabs/project_tab.ui` | `QLineEdit` → `QComboBox` 교체 |
+| `HailoRT-Ui/src/views/project_tab.py` | 최근 폴더 관리, 재귀 트리 표시 전면 재작성 |
+| `HailoRT-Ui/ui/main_window.ui` | `actionOpen` → `actionOpenFolder` 변경 |
+| `HailoRT-Ui/src/app.py` | `_open_folder()` 메서드 추가, 메뉴 연결 |
+| `.gitignore` | `recent_folders.json` 추가 |
+
+**심각도:** Enhancement
+
+---
+
+### Issue #34: QTabBar 탭 텍스트 잘림 - "Project", "Model Convert" (MAJOR - RESOLVED)
+
+**문제:** "Project" 탭 끝 글자, "Model Convert" 탭 끝 글자가 잘려서 보임
+
+**원인 분석:**
+- Qt5 QTabBar는 **스타일시트 적용 전** 위젯의 기본 QFont로 탭 너비를 계산
+- 스타일시트에서 `font-weight: bold`나 `font-size` 변경 시, 계산된 너비보다 실제 텍스트가 넓어짐
+- `QWidget { font-size: 12pt; }` 글로벌 규칙도 탭 크기 계산에 반영 안 됨
+- 선택/비선택 상태 font 차이와 무관하게, 스타일시트 font 자체가 문제
+
+**시도한 방법들 (실패):**
+
+| 시도 | 방법 | 결과 |
+|------|------|------|
+| 1차 | `min-width: 100px` 제거 | 여전히 잘림 |
+| 2차 | `qproperty-expanding: false` + selected에만 bold | "roject" (더 심해짐) |
+| 3차 | 모든 탭에 bold 적용 | 여전히 잘림 (Qt가 bold 기준으로도 크기 미계산) |
+
+**최종 해결 - bold 완전 제거:**
+```css
+/* 핵심: font-weight: bold를 탭에서 완전히 제거 */
+QTabBar {
+    qproperty-expanding: false;  /* 탭이 전체 너비를 채우려 하지 않음 */
+}
+
+QTabBar::tab {
+    /* font-weight: bold 없음! */
+    padding: 10px 24px;
+    color: #333333;
+}
+
+QTabBar::tab:selected {
+    color: #1565c0;
+    border-bottom: 2px solid #1565c0;  /* bold 대신 하단 보더로 선택 표시 */
+}
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/utils/styles.py` | `QTabBar` - bold 완전 제거, `qproperty-expanding: false`, 선택 탭은 `border-bottom`으로 구분 |
+
+**교훈:** Qt5 스타일시트에서 `font-weight: bold`를 QTabBar에 사용하면 안 됨. Qt가 탭 크기를 스타일시트 적용 전 기본 폰트로 계산하기 때문. 선택 상태 구분은 색상/보더 등 크기에 영향 없는 속성으로 해야 함.
+
+**심각도:** Major
+
+---
+
+### Issue #35: HEF 직접 선택 시 클래스 이름 COCO fallback (MAJOR - RESOLVED)
+
+**문제:** Project 탭을 거치지 않고 Inference 탭에서 직접 HEF 파일을 선택하면, `class_names`가 None → COCO_NAMES fallback → forklift 모델이 "person: 0.96"으로 표시
+
+**원인 분석:**
+- `start_inference()`에서 `class_names`를 `_project_info`에서만 가져옴
+- `_project_info`는 Project 탭에서 `set_project_info()` 호출 시에만 설정됨
+- 직접 HEF 브라우즈 시 `_project_info = None` → `class_names = None` → COCO fallback
+
+**해결 - HEF 경로에서 data.yaml 자동 탐색:**
+```python
+def _find_class_names_from_hef(self, hef_path: str) -> Optional[List[str]]:
+    """HEF 파일 경로에서 상위 디렉토리를 탐색하여 data.yaml의 클래스 이름 찾기"""
+    current = os.path.dirname(os.path.abspath(hef_path))
+    for _ in range(5):  # 최대 5단계 상위까지 탐색
+        data_config = parse_data_yaml(current)
+        if data_config:
+            names = data_config.get('names')
+            if names:
+                return names
+        parent = os.path.dirname(current)
+        if parent == current:
+            break
+        current = parent
+    return None
+```
+
+**클래스 이름 해결 우선순위 (3단계):**
+```
+1. self._class_names (Project 탭에서 직접 설정)
+2. self._project_info.get('class_names') (Project 정보)
+3. self._find_class_names_from_hef(hef_path) (HEF 경로 자동 탐색)
+4. COCO_NAMES fallback (기본값)
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/views/inference_tab.py` | `_find_class_names_from_hef()` 메서드 추가, `start_inference()` 클래스 이름 해결 로직 3단계로 확장 |
+
+**테스트 결과:** `/home/amap/yolov8_custom/Project_yolov8/forklift/models/hef/best.hef` → 2단계 상위에서 `data.yaml` 발견 → `['palette_green']` 정상 로드
+
+**심각도:** Major
+
+---
+
+### Issue #36: 프로젝트 선택 시 자동 파일 감지 및 로딩 (ENHANCEMENT - RESOLVED)
+
+**요청:** "프로젝트 선택시 관련 파일 체크도 다하고 관련 파일을 자동으로 로딩하게 해주세요"
+
+**구현 내용:**
+
+**1) folder_structure.py - ONNX/HEF/HAR 파일 감지 추가:**
+```python
+# models/ 하위 또는 루트에서 모델 파일 자동 탐색
+result['onnx_files'] = _find_files_by_ext(os.path.join(models_dir, 'onnx'), '.onnx')
+result['hef_files'] = _find_files_by_ext(os.path.join(models_dir, 'hef'), '.hef')
+result['har_files'] = _find_files_by_ext(os.path.join(models_dir, 'har'), '.har')
+```
+
+**2) Project 탭 - "Apply" 버튼 없이 자동 적용:**
+- 폴더 감지 완료 시 자동으로 `project_changed` 시그널 발신
+- "Applied!" 피드백 2초 표시 후 원래 상태 복원
+- 수동 Apply 버튼은 유지 (재적용 용도)
+
+**3) Convert 탭 - ONNX 자동 선택:**
+```python
+# 'best' 키워드 포함 파일 우선, 없으면 첫 번째 파일
+onnx_files = info.get('onnx_files', [])
+if onnx_files and not self.tab.editOnnxPath.text():
+    best_onnx = next(
+        (f for f in onnx_files if 'best' in os.path.basename(f).lower()),
+        onnx_files[0]
+    )
+    self.tab.editOnnxPath.setText(best_onnx)
+```
+
+**4) Inference 탭 - HEF 자동 선택 + 모델 로드:**
+```python
+hef_files = info.get('hef_files', [])
+if hef_files and not self.tab.editHefPath.text():
+    best_hef = next(
+        (f for f in hef_files if 'best' in os.path.basename(f).lower()),
+        hef_files[0]
+    )
+    self.tab.editHefPath.setText(best_hef)
+    self.load_model()  # 즉시 모델 로드
+```
+
+**자동 로딩 흐름:**
+```
+폴더 선택 (Project 탭)
+  → detect_project_structure() (PT/ONNX/HEF/HAR 전부 스캔)
+  → 트리 표시 + 정보 패널 업데이트
+  → project_changed 시그널 자동 발신
+    → Convert 탭: ONNX 경로 자동 설정
+    → Inference 탭: HEF 경로 자동 설정 + 모델 자동 로드
+    → class_names 자동 전달
+```
+
+| 파일 | 변경 내용 |
+|------|----------|
+| `HailoRT-Ui/src/utils/folder_structure.py` | `_find_files_by_ext()` 헬퍼 추가, ONNX/HEF/HAR 감지 |
+| `HailoRT-Ui/src/views/project_tab.py` | 감지 완료 시 자동 시그널 발신, ONNX/HEF 정보 표시 |
+| `HailoRT-Ui/ui/tabs/project_tab.ui` | Detected Information에 ONNX/HEF 행 추가 |
+| `HailoRT-Ui/src/views/convert_tab.py` | `set_project_info()` - ONNX 자동 선택 |
+| `HailoRT-Ui/src/views/inference_tab.py` | `set_project_info()` - HEF 자동 선택 + 모델 로드, `_class_names` 저장 |
+
+**테스트 결과:** Forklift 프로젝트 폴더 선택 → ONNX/HEF 자동 감지 → Inference 탭에 HEF 자동 로드 → "palette_green: 0.96" 정상 탐지 확인
+
+**심각도:** Enhancement

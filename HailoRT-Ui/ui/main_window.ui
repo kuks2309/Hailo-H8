@@ -35,6 +35,11 @@
       <property name="currentIndex">
        <number>0</number>
       </property>
+      <widget class="QWidget" name="tab_project">
+       <attribute name="title">
+        <string>Project</string>
+       </attribute>
+      </widget>
       <widget class="QWidget" name="tab_device">
        <attribute name="title">
         <string>Device</string>
@@ -72,7 +77,7 @@
     <property name="title">
      <string>File</string>
     </property>
-    <addaction name="actionOpen"/>
+    <addaction name="actionOpenFolder"/>
     <addaction name="actionSave"/>
     <addaction name="separator"/>
     <addaction name="actionExit"/>
@@ -111,9 +116,9 @@
    <addaction name="menuHelp"/>
   </widget>
   <widget class="QStatusBar" name="statusbar"/>
-  <action name="actionOpen">
+  <action name="actionOpenFolder">
    <property name="text">
-    <string>Open</string>
+    <string>Open Folder</string>
    </property>
    <property name="shortcut">
     <string>Ctrl+O</string>

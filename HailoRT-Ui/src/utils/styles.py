@@ -40,11 +40,9 @@ QGroupBox {{
     background-color: {COLORS['surface']};
     border: 1px solid {COLORS['border']};
     border-radius: 8px;
-    margin-top: 20px;
+    margin-top: 30px;
     padding: 18px;
-    padding-top: 28px;
-    font-weight: bold;
-    font-size: 13pt;
+    padding-top: 24px;
 }}
 
 QGroupBox::title {{
@@ -52,9 +50,11 @@ QGroupBox::title {{
     subcontrol-origin: margin;
     subcontrol-position: top left;
     left: 16px;
-    top: 4px;
-    padding: 0 8px;
+    top: 8px;
+    padding: 2px 10px;
     background-color: {COLORS['surface']};
+    font-weight: bold;
+    font-size: 13pt;
 }}
 
 /* Buttons */
@@ -243,21 +243,25 @@ QTabWidget::pane {{
     border-radius: 4px;
 }}
 
+QTabBar {{
+    qproperty-expanding: false;
+}}
+
 QTabBar::tab {{
     background-color: {COLORS['background']};
-    color: {COLORS['text']};
+    color: {COLORS['text_secondary']};
     border: 1px solid {COLORS['border']};
     border-bottom: none;
     border-top-left-radius: 4px;
     border-top-right-radius: 4px;
-    padding: 10px 20px;
+    padding: 10px 24px;
     margin-right: 2px;
 }}
 
 QTabBar::tab:selected {{
     background-color: {COLORS['surface']};
     color: {COLORS['primary']};
-    font-weight: bold;
+    border-bottom: 2px solid {COLORS['primary']};
 }}
 
 QTabBar::tab:hover {{
@@ -402,8 +406,34 @@ QMessageBox QLabel {{
     color: {COLORS['text']};
 }}
 
-/* Frame */
-QFrame {{
+/* Frame - only style standalone panel frames, not all QFrame-derived widgets */
+QFrame[frameShape="4"] {{
+    color: {COLORS['border']};
+}}
+
+QFrame[frameShape="5"] {{
+    color: {COLORS['border']};
+}}
+
+/* Table Widget */
+QTableWidget {{
+    background-color: {COLORS['surface']};
+    border: 1px solid {COLORS['border']};
+    border-radius: 4px;
+    gridline-color: {COLORS['border_light']};
+}}
+
+QHeaderView::section {{
+    background-color: {COLORS['surface_light']};
+    color: {COLORS['text']};
+    border: none;
+    border-bottom: 1px solid {COLORS['border']};
+    padding: 6px 8px;
+    font-weight: bold;
+}}
+
+/* Tree Widget */
+QTreeWidget {{
     background-color: {COLORS['surface']};
     border: 1px solid {COLORS['border']};
     border-radius: 4px;

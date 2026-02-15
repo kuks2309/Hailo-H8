@@ -648,10 +648,16 @@ class ConverterService:
                 detection_heads = node_info.get('detection_heads', [])
                 proto_node = node_info.get('proto_node')
 
-                # For segment models, ensure proto node is first
+                # Auto-detect segment model from ONNX structure
+                if proto_node and model_type != 'segment':
+                    model_type = 'segment'
+                    self._log("Auto-detected segmentation model from ONNX proto output")
+
+                # For segment models, include proto + all detection heads
                 if model_type == 'segment' and proto_node:
-                    end_nodes = [proto_node] + detection_heads
-                    self._log(f"Segment model: proto={proto_node}, heads={detection_heads}")
+                    end_nodes = detection_heads + [proto_node]
+                    self._log(f"Segment model: {len(end_nodes)} end nodes "
+                              f"(proto={proto_node})")
                 else:
                     end_nodes = detection_heads
 
@@ -726,6 +732,12 @@ class ConverterService:
 
             # Translate ONNX to Hailo format
             hn, npz = runner.translate_onnx_model(onnx_path, **translate_kwargs)
+
+            # Apply normalization script (standard Hailo approach)
+            # Input is uint8 [0,255], model internally divides by 255
+            alls_script = 'normalization1 = normalization([0.0, 0.0, 0.0], [255.0, 255.0, 255.0])'
+            self._log("Applying model script: normalization [0,255]")
+            runner.load_model_script(alls_script)
 
             self._progress(40)
             self._log("Loading calibration data...")
@@ -1000,7 +1012,7 @@ class ConverterService:
                 try:
                     img = Image.open(f).convert('RGB')
                     img = img.resize(input_size)
-                    img_array = np.array(img).astype(np.float32) / 255.0
+                    img_array = np.array(img).astype(np.float32)
 
                     # Convert to NCHW if requested
                     if layout == 'NCHW':

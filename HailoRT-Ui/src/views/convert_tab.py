@@ -27,6 +27,7 @@ class ConvertTabController:
         self.base_path: str = base_path
         self.worker: Optional[ConvertWorker] = None
         self.model_zoo_mode: bool = False
+        self._project_info: Optional[Dict] = None
 
         # Load UI into tab
         ui_path = os.path.join(base_path, 'ui', 'tabs', 'convert_tab.ui')
@@ -37,6 +38,70 @@ class ConvertTabController:
 
         # Connect signals
         self._connect_signals()
+
+    # --- Public API (called from app.py via project_changed signal) ---
+
+    def set_project_info(self, info: Dict) -> None:
+        """
+        Apply project info from Project tab.
+
+        Auto-fills calibration, ONNX output, HEF output, and PT file paths.
+        """
+        self._project_info = info
+        if not info.get('valid'):
+            return
+
+        # Auto-fill calibration path
+        if info.get('calib_found'):
+            self.tab.editCalibPath.setText(info['calib_dir'])
+
+        # Auto-fill ONNX output path
+        onnx_dir = info.get('onnx_dir', '')
+        if onnx_dir:
+            os.makedirs(onnx_dir, exist_ok=True)
+            current_onnx = self.tab.editOnnxOutPath.text()
+            if not current_onnx or 'HailoRT-Ui/data/models/onnx' in current_onnx:
+                self.tab.editOnnxOutPath.setText(
+                    os.path.join(onnx_dir, 'model.onnx')
+                )
+
+        # Auto-fill HEF output path
+        hef_dir = info.get('hef_dir', '')
+        if hef_dir:
+            os.makedirs(hef_dir, exist_ok=True)
+            current_hef = self.tab.editHefOutPath.text()
+            if not current_hef or 'HailoRT-Ui/data/models/hef' in current_hef:
+                self.tab.editHefOutPath.setText(
+                    os.path.join(hef_dir, 'model.hef')
+                )
+
+        # Auto-select PT file if found
+        pt_files = info.get('pt_files', [])
+        if pt_files and not self.tab.editPtPath.text():
+            best_pt = next(
+                (f for f in pt_files if os.path.basename(f) == 'best.pt'),
+                pt_files[0]
+            )
+            self.tab.editPtPath.setText(best_pt)
+            self._log(f"[Auto] PT model: {os.path.basename(best_pt)}")
+
+        # Auto-select ONNX file if found (for HEF compilation)
+        onnx_files = info.get('onnx_files', [])
+        if onnx_files and not self.tab.editOnnxPath.text():
+            best_onnx = next(
+                (f for f in onnx_files if 'best' in os.path.basename(f).lower()),
+                onnx_files[0]
+            )
+            self.tab.editOnnxPath.setText(best_onnx)
+            self._log(f"[Auto] ONNX model: {os.path.basename(best_onnx)}")
+
+        # Log
+        if info.get('num_classes'):
+            self._log(f"[Auto] Detected classes: {info['num_classes']}")
+
+        self._log(f"[{self._timestamp()}] Project paths applied: {info.get('summary', '')}")
+
+    # --- Private methods ---
 
     def _set_default_paths(self) -> None:
         """Set default directory paths."""
@@ -78,12 +143,21 @@ class ConvertTabController:
         if hasattr(self.tab, 'btnModelZoo'):
             self.tab.btnModelZoo.clicked.connect(self._toggle_model_zoo)
 
+    def _get_start_dir(self, subdir: str, project_key: str = None) -> str:
+        """Get file dialog start directory, preferring project paths."""
+        if project_key and self._project_info and self._project_info.get(project_key):
+            return self._project_info[project_key]
+        if self._project_info and self._project_info.get('base'):
+            return self._project_info['base']
+        return os.path.join(self.base_path, 'data', subdir)
+
     def _browse_pt_file(self) -> None:
         """Browse for PyTorch model file."""
+        start_dir = self._get_start_dir('models/pt')
         path, _ = QFileDialog.getOpenFileName(
             self.tab,
             "Select PyTorch Model",
-            os.path.join(self.base_path, 'data', 'models', 'pt'),
+            start_dir,
             "PyTorch Models (*.pt *.pth);;All Files (*)"
         )
         if path:
@@ -92,10 +166,11 @@ class ConvertTabController:
 
     def _browse_onnx_output(self) -> None:
         """Browse for ONNX output path."""
+        start_dir = self._get_start_dir('models/onnx', 'onnx_dir')
         path, _ = QFileDialog.getSaveFileName(
             self.tab,
             "Save ONNX Model",
-            os.path.join(self.base_path, 'data', 'models', 'onnx'),
+            start_dir,
             "ONNX Models (*.onnx)"
         )
         if path:
@@ -105,10 +180,11 @@ class ConvertTabController:
 
     def _browse_onnx_file(self) -> None:
         """Browse for ONNX model file."""
+        start_dir = self._get_start_dir('models/onnx', 'onnx_dir')
         path, _ = QFileDialog.getOpenFileName(
             self.tab,
             "Select ONNX Model",
-            os.path.join(self.base_path, 'data', 'models', 'onnx'),
+            start_dir,
             "ONNX Models (*.onnx);;All Files (*)"
         )
         if path:
@@ -117,20 +193,22 @@ class ConvertTabController:
 
     def _browse_calib_dir(self) -> None:
         """Browse for calibration directory."""
+        start_dir = self._get_start_dir('calibration/images', 'calib_dir')
         path = QFileDialog.getExistingDirectory(
             self.tab,
             "Select Calibration Images Directory",
-            os.path.join(self.base_path, 'data', 'calibration', 'images')
+            start_dir
         )
         if path:
             self.tab.editCalibPath.setText(path)
 
     def _browse_hef_output(self) -> None:
         """Browse for HEF output path."""
+        start_dir = self._get_start_dir('models/hef', 'hef_dir')
         path, _ = QFileDialog.getSaveFileName(
             self.tab,
             "Save HEF Model",
-            os.path.join(self.base_path, 'data', 'models', 'hef'),
+            start_dir,
             "Hailo Models (*.hef)"
         )
         if path:
@@ -148,7 +226,13 @@ class ConvertTabController:
         if pt_path.endswith(('.pt', '.pth')):
             base_name = os.path.basename(pt_path)
             name_no_ext = os.path.splitext(base_name)[0]
-            onnx_dir = os.path.join(self.base_path, 'data', 'models', 'onnx')
+
+            if self._project_info and self._project_info.get('onnx_dir'):
+                onnx_dir = self._project_info['onnx_dir']
+            else:
+                onnx_dir = os.path.join(self.base_path, 'data', 'models', 'onnx')
+
+            os.makedirs(onnx_dir, exist_ok=True)
             self.tab.editOnnxOutPath.setText(
                 os.path.join(onnx_dir, f"{name_no_ext}.onnx")
             )
@@ -163,7 +247,7 @@ class ConvertTabController:
             logger.info(f"Detected YOLO project: {project_info}")
 
             # Auto-fill calibration path
-            if project_info.get('calib_dir') and not self.tab.editCalibPath.text():
+            if project_info.get('calib_dir'):
                 self.tab.editCalibPath.setText(project_info['calib_dir'])
                 self._log(f"[Auto] Calibration path: {project_info['calib_dir']}")
 
@@ -178,7 +262,13 @@ class ConvertTabController:
 
         if onnx_path.endswith('.onnx'):
             base_name = os.path.basename(onnx_path).replace('.onnx', '.hef')
-            hef_dir = os.path.join(self.base_path, 'data', 'models', 'hef')
+
+            if self._project_info and self._project_info.get('hef_dir'):
+                hef_dir = self._project_info['hef_dir']
+            else:
+                hef_dir = os.path.join(self.base_path, 'data', 'models', 'hef')
+
+            os.makedirs(hef_dir, exist_ok=True)
             self.tab.editHefOutPath.setText(os.path.join(hef_dir, base_name))
 
     def _run_model_detection(self, pt_path: str) -> None:
@@ -404,7 +494,6 @@ class ConvertTabController:
 
         if self.model_zoo_mode:
             self._log(f"[{self._timestamp()}] Model Zoo mode enabled - using standard model")
-            # Disable ONNX file selection
             if hasattr(self.tab, 'editOnnxPath'):
                 self.tab.editOnnxPath.setEnabled(False)
                 self.tab.editOnnxPath.setPlaceholderText("Using Hailo Model Zoo standard model...")
@@ -414,7 +503,6 @@ class ConvertTabController:
                 self.tab.btnModelZoo.setText("Use Custom ONNX")
         else:
             self._log(f"[{self._timestamp()}] Model Zoo mode disabled - using custom ONNX")
-            # Re-enable ONNX file selection
             if hasattr(self.tab, 'editOnnxPath'):
                 self.tab.editOnnxPath.setEnabled(True)
                 self.tab.editOnnxPath.setPlaceholderText("")

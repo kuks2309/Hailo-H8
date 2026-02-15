@@ -805,17 +805,26 @@ def extract_onnx_nodes(onnx_path: str) -> Dict[str, Any]:
         if not detection_heads:
             model22_cv2: List[str] = []
             model22_cv3: List[str] = []
+            model22_cv4: List[str] = []
+            model22_proto: Optional[str] = None
 
             for node in model.graph.node:
-                if '/model.22/cv2.' in node.name and '/Conv' in node.name:
+                # Only match final Conv in each branch (exclude intermediate /conv/Conv)
+                if '/model.22/cv2.' in node.name and node.name.endswith('/Conv') and '/conv/Conv' not in node.name:
                     model22_cv2.append(node.name)
-                if '/model.22/cv3.' in node.name and '/Conv' in node.name:
+                if '/model.22/cv3.' in node.name and node.name.endswith('/Conv') and '/conv/Conv' not in node.name:
                     model22_cv3.append(node.name)
+                if '/model.22/cv4.' in node.name and node.name.endswith('/Conv') and '/conv/Conv' not in node.name:
+                    model22_cv4.append(node.name)
+                if '/model.22/proto/' in node.name and ('/Mul' in node.name or node.name.endswith('/Conv')):
+                    model22_proto = node.name
 
             if model22_cv2 or model22_cv3:
-                # YOLOv8 detection heads
-                detection_heads = sorted(model22_cv2 + model22_cv3)
+                # YOLOv8 detection + segmentation heads
+                detection_heads = sorted(model22_cv2 + model22_cv3 + model22_cv4)
                 naming_style = 'yolov8_official'
+                if model22_proto:
+                    proto_node = model22_proto
 
         if not detection_heads:
             # Pattern 2: Ultralytics/torch.onnx (auto-generated naming)

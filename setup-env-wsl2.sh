@@ -152,6 +152,69 @@ echo "[OK] Dependencies installed"
 # Hailo SDK wheels
 echo ""
 echo "  Installing Hailo SDK..."
+
+GDRIVE_FOLDER_URL="https://drive.google.com/drive/folders/1pAv-qojczbuIskbWu0W_0sac6LhJRF66"
+
+# Count available Hailo SDK wheels
+_count_hailo_wheels() {
+    local count=0
+    ls "$INSTALL_SW"/hailort-*.whl &>/dev/null && ((count++)) || true
+    ls "$INSTALL_SW"/hailo_dataflow_compiler-*.whl &>/dev/null && ((count++)) || true
+    ls "$INSTALL_SW"/hailo_model_zoo-*.whl &>/dev/null && ((count++)) || true
+    echo "$count"
+}
+
+# Download from Google Drive if install_sw is missing or incomplete
+if [ ! -d "$INSTALL_SW" ] || [ "$(_count_hailo_wheels)" -lt 3 ]; then
+    echo "  [INFO] Hailo SDK packages not found (or incomplete) in install_sw/"
+    echo ""
+    echo "  Required files:"
+    echo "    - hailort-<version>.whl"
+    echo "    - hailo_dataflow_compiler-<version>.whl"
+    echo "    - hailo_model_zoo-<version>.whl"
+    echo ""
+    echo "  Options:"
+    echo "    1) Auto-download from Google Drive (gdown)"
+    echo "    2) Skip (download manually later)"
+    echo ""
+    read -p "  Select (1/2): " DL_CHOICE
+
+    if [ "$DL_CHOICE" = "1" ]; then
+        echo ""
+        echo "  Installing gdown for Google Drive download..."
+        pip install gdown --quiet
+
+        mkdir -p "$INSTALL_SW"
+        echo "  Downloading Hailo SDK from Google Drive..."
+        echo "  URL: $GDRIVE_FOLDER_URL"
+        echo ""
+        gdown --folder "$GDRIVE_FOLDER_URL" -O "$INSTALL_SW" --remaining-ok || {
+            echo ""
+            echo "  [ERROR] Auto-download failed. Please download manually:"
+            echo "    URL: ${GDRIVE_FOLDER_URL}?usp=sharing"
+            echo "    Place files in: $INSTALL_SW/"
+        }
+
+        # gdown preserves Google Drive folder structure (e.g. ubuntu/install_sw/)
+        # Move .whl and .deb files from subdirectories to install_sw root
+        find "$INSTALL_SW" -mindepth 2 -name "*.whl" -exec mv {} "$INSTALL_SW"/ \;
+        find "$INSTALL_SW" -mindepth 2 -name "*.deb" -exec mv {} "$INSTALL_SW"/ \;
+
+        # Clean up: Zone.Identifier files, Windows installers, empty dirs
+        find "$INSTALL_SW" -name "*Zone.Identifier" -delete 2>/dev/null || true
+        find "$INSTALL_SW" -name "*.msi" -delete 2>/dev/null || true
+        find "$INSTALL_SW" -mindepth 1 -type d -empty -delete 2>/dev/null || true
+
+        echo ""
+        echo "  [INFO] Downloaded $(_count_hailo_wheels)/3 wheel files"
+    else
+        echo "  [SKIP] Manual download required"
+        echo "    URL: ${GDRIVE_FOLDER_URL}?usp=sharing"
+        echo "    Place files in: $INSTALL_SW/"
+    fi
+fi
+
+# Install Hailo SDK wheels
 if [ -d "$INSTALL_SW" ]; then
     # Dataflow Compiler (primary for WSL2 - provides hailo_sdk_client)
     DFC_WHL=$(ls "$INSTALL_SW"/hailo_dataflow_compiler-*.whl 2>/dev/null | head -1)
@@ -181,7 +244,8 @@ if [ -d "$INSTALL_SW" ]; then
     fi
 else
     echo "  [SKIP] install_sw/ directory not found"
-    echo "    Download Hailo SDK from: https://hailo.ai/developer-zone/"
+    echo "    Download from: ${GDRIVE_FOLDER_URL}?usp=sharing"
+    echo "    Or from: https://hailo.ai/developer-zone/"
     echo "    Place .whl files in: $INSTALL_SW/"
 fi
 

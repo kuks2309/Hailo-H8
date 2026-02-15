@@ -17,6 +17,9 @@ build/
 *.swp
 *.swo
 
+# User-specific
+recent_folders.json
+
 # Project specific
 *.hef
 *.onnx

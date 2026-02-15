@@ -8,6 +8,7 @@ from PyQt5.QtCore import QFile, QIODevice
 from PyQt5 import uic
 
 from __version__ import __version__
+from views.project_tab import ProjectTabController
 from views.device_tab import DeviceTabController
 from views.convert_tab import ConvertTabController
 from views.inference_tab import InferenceTabController
@@ -49,6 +50,11 @@ class HailoApp(QMainWindow):
 
     def _init_tabs(self):
         """Initialize tab controllers."""
+        # Project tab (first - provides paths to other tabs)
+        self.project_controller = ProjectTabController(
+            self.tab_project, self.base_path
+        )
+
         # Device tab
         self.device_controller = DeviceTabController(
             self.tab_device, self.base_path
@@ -59,9 +65,10 @@ class HailoApp(QMainWindow):
             self.tab_convert, self.base_path
         )
 
-        # Inference tab
+        # Inference tab (shares device_controller for device access)
         self.inference_controller = InferenceTabController(
-            self.tab_inference, self.base_path
+            self.tab_inference, self.base_path,
+            device_controller=self.device_controller
         )
 
         # Monitor tab (shares device_controller for real device stats)
@@ -70,9 +77,32 @@ class HailoApp(QMainWindow):
             device_controller=self.device_controller
         )
 
+        # Wire Project tab -> other tabs
+        self.project_controller.project_changed.connect(
+            self._on_project_changed
+        )
+
+    def _on_project_changed(self, project_info: dict):
+        """Handle project folder change - propagate to other tabs."""
+        logger.info(f"Project changed: {project_info.get('summary', '')}")
+
+        # Apply to Convert tab
+        self.convert_controller.set_project_info(project_info)
+
+        # Apply to Inference tab (HEF path)
+        if hasattr(self.inference_controller, 'set_project_info'):
+            self.inference_controller.set_project_info(project_info)
+
+        self.statusbar.showMessage(
+            f"Project: {os.path.basename(project_info.get('base', ''))} - "
+            f"{project_info.get('summary', '')}",
+            5000
+        )
+
     def _connect_actions(self):
         """Connect menu actions to handlers."""
         # File menu
+        self.actionOpenFolder.triggered.connect(self._open_folder)
         self.actionExit.triggered.connect(self.close)
 
         # Device menu
@@ -115,6 +145,11 @@ class HailoApp(QMainWindow):
         else:
             logger.info("All packages available")
 
+    def _open_folder(self):
+        """Open folder via Project tab and switch to it."""
+        self.tabWidget.setCurrentWidget(self.tab_project)
+        self.project_controller._browse_folder()
+
     def _show_settings(self):
         """Show settings dialog."""
         from views.settings_dialog import SettingsDialog
@@ -137,6 +172,10 @@ class HailoApp(QMainWindow):
             "<li>Real-time inference</li>"
             "<li>Performance monitoring</li>"
             "</ul>"
+            "<hr>"
+            "<p><b>Author:</b> Prof. Kuk Won Ko with Claude Code</p>"
+            "<p><b>License:</b> Free for personal and non-commercial use.<br>"
+            "Commercial and enterprise use requires a paid license.</p>"
         )
 
     def closeEvent(self, event):
